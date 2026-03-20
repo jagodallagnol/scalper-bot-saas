@@ -100,6 +100,9 @@ def init_exchange(session, api_key, api_secret, password):
             'secret': api_secret,
             'password': password,
             'enableRateLimit': True,
+            'headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
             'options': {
                 'defaultType': 'swap'
             }
@@ -149,7 +152,7 @@ def get_price():
         symbol = os.getenv('TRADING_PAIR', 'XRP/USDT')
         
         # Use user exchange if available, otherwise just use a generic unauthenticated one
-        ex = session['exchange'] if session['exchange'] else ccxt.bitget()
+        ex = session['exchange'] if session['exchange'] else ccxt.bitget({'headers': {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}})
         
         # Fetch ticker
         ticker = ex.fetch_ticker(symbol)
