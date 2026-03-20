@@ -44,6 +44,28 @@ Modifica `config.py` per personalizzare:
 - **MA_FAST / MA_SLOW**: Periodi delle medie mobili
 - **RSI_PERIOD**: Periodo RSI per overbought/oversold
 
+## 📱 App Web & Mobile (SaaS Mode / Netlify)
+
+Il bot include un'interfaccia grafica avanzata (Aether OS) che può essere pubblicata online gratuitamente o installata come App nativa sul tuo telefono.
+
+### Pubblicare l'interfaccia pubblica:
+1. Collega questo repository a **[Netlify](https://www.netlify.com/)** (non serve build, usa solo `index.html`).
+2. Netlify genererà un link pubblico, es: `https://tuo-scalper.netlify.app`. 
+3. *Sì, su Netlify basta caricare il repository così com'è. Penserà a tutto lui.*
+
+### Installare l'App su iPhone / Android:
+1. Apri il link di Netlify dal tuo smartphone (Safari su iOS, Chrome su Android).
+2. Tocca l'icona **Condividi** e scegli **"Aggiungi alla schermata Home"**.
+3. Avrai l'App nativa con icona. **Nota:** l'App richiede un backend Python attivo per inviare gli ordini.
+
+### Collegare l'App Web al tuo Backend Locale (Gratis):
+Se vuoi controllare il bot dal telefono mentre fa trading sul tuo PC a casa:
+1. Avvia il server sul tuo PC: `python start_bot.py`
+2. Esponi il tuo PC con Ngrok: `ngrok http 5000`
+3. Apri l'App dal telefono, vai su **⚙️ IMPOSTAZIONI**.
+4. Alla voce **"URL BACKEND"** incolla l'URL di Ngrok (aggiungendo `/api` alla fine, es. `https://1234.ngrok-free.app/api`).
+5. Inserisci le tue API Keys di Bitget. (Le chiavi non vengono salvate da nessuna parte se non nella memoria temporanea del tuo browser/sessione).
+
 ## Utilizzo
 
 ### Backtest Avanzato (consigliato prima di andare live!)
