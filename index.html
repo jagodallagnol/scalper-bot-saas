@@ -786,6 +786,7 @@
   async function apiFetch(endpoint, options = {}) {
     if (!options.headers) options.headers = {};
     options.headers['X-Session-ID'] = sessionId;
+    options.headers['ngrok-skip-browser-warning'] = '69420';
     return fetch(`${API}${endpoint}`, options);
   }
   
