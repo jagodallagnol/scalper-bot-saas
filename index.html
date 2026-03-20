@@ -7,6 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#050505">
+    <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-title" content="ScalperBot">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzA1MDUwNSIvPjx0ZXh0IHk9IjUwIiB4PSI1MCIgZm9udC1zaXplPSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiNjY2ZmMDAiPjrigLg8L3RleHQ+PC9zdmc+">
   <title>SCALPER BOT · Trading in Tempo Reale</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
@@ -665,10 +668,15 @@
         </div>
 
         <div class="section">
+                    <div class="section-title">· CONNESSIONE SERVER ·</div>
+          <div class="input-label">URL BACKEND (Locale o Ngrok)</div>
+          <input type="text" id="input-api-url" class="input-field" placeholder="http://localhost:5000">
+
           <div class="section-title">· CREDENZIALI API ·</div>
-          <div class="alert alert-warning">
-            Le credenziali vengono salvate localmente nel browser. Non vengono inviate a server esterni.
+                    <div class="alert alert-warning">
+            <strong>SaaS Mode Attivo:</strong> Le tue chiavi vengono usate <strong>solo in memoria temporanea (RAM)</strong> per il tempo della tua sessione. Nessun database le registra in modo permanente.
           </div>
+
 
           <div class="input-label">API KEY BITGET</div>
           <input type="password" id="input-api-key" class="input-field" placeholder="Inserisci API Key">
@@ -764,7 +772,23 @@
   // ═══════════════════════════════════════════════════
   // SCALPER BOT — APP PRINCIPALE
   // ═══════════════════════════════════════════════════
-  const API = 'http://localhost:8889/api';
+      const savedUrl = localStorage.getItem('bg_api_url') || 'http://localhost:5000';
+  let API = `${savedUrl}/api`;
+ di Render (es: https://app.onrender.com/api) per andare online
+  
+  // ── GESTIONE SESSIONE SAAS ────────────────────────────
+  let sessionId = localStorage.getItem('scalper_session');
+  if (!sessionId) {
+    sessionId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+    localStorage.setItem('scalper_session', sessionId);
+  }
+
+  async function apiFetch(endpoint, options = {}) {
+    if (!options.headers) options.headers = {};
+    options.headers['X-Session-ID'] = sessionId;
+    return fetch(`${API}${endpoint}`, options);
+  }
+  
   let connesso = false;
   let datiPrezzo = {};
   let simboloAttivo = localStorage.getItem('simbolo') || 'XRPUSDT';
@@ -803,7 +827,7 @@
   // ── CONNESSIONE ──────────────────────────────────────
   async function verificaConnessione() {
     try {
-      const r = await fetch(`${API}/status`, { signal: AbortSignal.timeout(4000) });
+      const r = await apiFetch('/status', { signal: AbortSignal.timeout(4000) });
       if (r.ok) {
         const d = await r.json();
         connesso = true;
@@ -839,7 +863,7 @@
   async function aggiornaPrezzi() {
     if (!connesso) return;
     try {
-      const r = await fetch(`${API}/price`, { signal: AbortSignal.timeout(5000) });
+      const r = await apiFetch('/price', { signal: AbortSignal.timeout(5000) });
       if (!r.ok) return;
       const d = await r.json();
       datiPrezzo = d;
@@ -873,7 +897,7 @@
   async function aggiornaAnalisi() {
     if (!connesso) return;
     try {
-      const r = await fetch(`${API}/market-data`, { signal: AbortSignal.timeout(8000) });
+      const r = await apiFetch('/indicators', { signal: AbortSignal.timeout(8000) });
       if (!r.ok) return;
       const d = await r.json();
       const ind = d.indicators || {};
@@ -901,7 +925,7 @@
   async function aggiornaSaldo() {
     if (!connesso) return;
     try {
-      const r = await fetch(`${API}/balance`, { signal: AbortSignal.timeout(6000) });
+      const r = await apiFetch('/portfolio', { signal: AbortSignal.timeout(6000) });
       if (!r.ok) return;
       const d = await r.json();
       document.getElementById('saldo-totale').textContent     = `$${parseFloat(d.totale||0).toFixed(2)}`;
@@ -915,7 +939,7 @@
   async function aggiornaStorico() {
     if (!connesso) return;
     try {
-      const r = await fetch(`${API}/trades`, { signal: AbortSignal.timeout(5000) });
+      const r = await apiFetch('/portfolio', { signal: AbortSignal.timeout(5000) });
       if (!r.ok) return;
       const d = await r.json();
       const trades = d.trades || [];
@@ -974,7 +998,7 @@
     const el = document.getElementById('lista-posizioni');
     el.innerHTML = '<div class="card"><div class="card-row"><span class="card-label"><span class="spinner"></span> Caricamento...</span></div></div>';
     try {
-      const r = await fetch(`${API}/positions`, { signal: AbortSignal.timeout(8000) });
+      const r = await apiFetch('/portfolio', { signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error('Errore risposta');
       const d = await r.json();
       const poss = d.posizioni || [];
@@ -1033,7 +1057,7 @@
     risRes.innerHTML = '<div class="alert alert-warning"><span class="spinner"></span> Invio ordine...</div>';
 
     try {
-      const r = await fetch(`${API}/trade`, {
+      const r = await apiFetch('/trade/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ side, quantity: importo })
@@ -1075,7 +1099,7 @@
   // ── BOT START/STOP ───────────────────────────────────
   document.getElementById('btn-avvia-bot').addEventListener('click', async () => {
     try {
-      const r = await fetch(`${API}/bot/start`, { method: 'POST' });
+      const r = await apiFetch('/bot/start', { method: 'POST' });
       const d = await r.json();
       if (d.successo) {
         document.getElementById('stato-bot').textContent = 'ATTIVO';
@@ -1087,7 +1111,7 @@
 
   document.getElementById('btn-ferma-bot').addEventListener('click', async () => {
     try {
-      const r = await fetch(`${API}/bot/stop`, { method: 'POST' });
+      const r = await apiFetch('/bot/stop', { method: 'POST' });
       const d = await r.json();
       if (d.successo) {
         document.getElementById('stato-bot').textContent = 'FERMATO';
@@ -1104,7 +1128,7 @@
     const el = document.getElementById('risultato-simbolo');
     el.innerHTML = '<div class="alert alert-warning"><span class="spinner"></span> Verifica in corso...</div>';
     try {
-      const r = await fetch(`${API}/symbol`, {
+      const r = await apiFetch('/symbol', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol: sym })
@@ -1125,6 +1149,12 @@
 
   // ── SALVATAGGIO CREDENZIALI ──────────────────────────
   document.getElementById('btn-salva-api').addEventListener('click', () => {
+        const apiUrl = document.getElementById('input-api-url').value.trim();
+    if (apiUrl) {
+      localStorage.setItem('bg_api_url', apiUrl);
+      API = `${apiUrl}/api`;
+    }
+    
     const key   = document.getElementById('input-api-key').value.trim();
     const sec   = document.getElementById('input-api-secret').value.trim();
     const pass  = document.getElementById('input-passphrase').value.trim();
@@ -1159,6 +1189,7 @@
     document.getElementById('input-simbolo').value = sym;
     document.getElementById('asset-display').textContent = sym.replace('USDT', '/USDT');
     document.getElementById('info-coppia').textContent = sym.replace('USDT', '/USDT');
+        document.getElementById('input-api-url').value = localStorage.getItem('bg_api_url') || 'http://localhost:5000';
     document.getElementById('input-api-key').value    = localStorage.getItem('bg_api_key') || '';
     document.getElementById('input-api-secret').value = localStorage.getItem('bg_api_secret') || '';
     document.getElementById('input-passphrase').value = localStorage.getItem('bg_passphrase') || '';
