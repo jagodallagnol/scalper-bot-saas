@@ -213,7 +213,7 @@ def get_indicators():
         symbol = os.getenv('TRADING_PAIR', 'XRP/USDT')
         
         # Fetch historical data (using the global data manager)
-        df = global_data_manager.download_data(symbol, '1m', limit=500)
+        df = global_data_manager.fetch_ohlcv_live(symbol, '1m', limit=500)
         
         if df.empty:
             return jsonify({'error': 'No data'}), 400
@@ -235,7 +235,7 @@ def get_signal():
     try:
         init_global_strategy()
         symbol = os.getenv('TRADING_PAIR', 'XRP/USDT')
-        df = global_data_manager.download_data(symbol, '1m', limit=500)
+        df = global_data_manager.fetch_ohlcv_live(symbol, '1m', limit=500)
         
         if df.empty:
             return jsonify({'error': 'No data'}), 400
@@ -385,7 +385,7 @@ def run_bot_loop(session):
         try:
             symbol = os.getenv('TRADING_PAIR', 'XRP/USDT')
             
-            df = global_data_manager.download_data(symbol, '1m', limit=500)
+            df = global_data_manager.fetch_ohlcv_live(symbol, '1m', limit=500)
             
             if df.empty:
                 time.sleep(check_interval)
