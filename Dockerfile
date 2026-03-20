@@ -1,7 +1,10 @@
-FROM python:3.10
+FROM python:3.10-slim
 
-# Install wget (build-essential should already be present in the full python image)
-RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+# Install system dependencies needed to compile TA-Lib
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
 # Download, compile and install TA-Lib C library
 RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
@@ -11,19 +14,22 @@ RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
     make && \
     make install && \
     cd .. && \
-    rm -rf ta-lib*
-
-# Set explicit paths for Python ta-lib module to find the C library during pip install
-ENV TA_LIBRARY_PATH=/usr/lib
-ENV TA_INCLUDE_PATH=/usr/include
+    rm -rf ta-lib* && \
+    ldconfig
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install them securely
+# Upgrade build tools globally first
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel numpy
+
+# Expose TA-Lib paths to pip manually
+ENV TA_LIBRARY_PATH=/usr/lib
+ENV TA_INCLUDE_PATH=/usr/include
+
+# Copy requirements and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt gunicorn
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
 # Copy all remaining bot source code
 COPY . .
