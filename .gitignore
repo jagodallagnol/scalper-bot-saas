@@ -1,0 +1,30 @@
+# API Keys and Secrets
+.env
+secret.py
+credentials.json
+*.pem
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data and Logs
+data/
+*.csv
+*.log
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Misc
+*.sqlite
+*.sqlite3

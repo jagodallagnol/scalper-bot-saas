@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#050505">
+  <title>SCALPER BOT · Trading in Tempo Reale</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --lime:   #ccff00;
+      --lime-d: #88aa00;
+      --lime-p: rgba(204,255,0,0.06);
+      --lime-b: rgba(204,255,0,0.18);
+      --void:   #050505;
+      --void2:  #0a0a0a;
+      --chr:    #888;
+      --chr-d:  #444;
+      --chr-dd: #222;
+      --text:   #aaa;
+      --red:    #ff3333;
+      --green:  #00ff88;
+      --border: rgba(255,255,255,0.04);
+      --border2:rgba(255,255,255,0.08);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html, body { width:100%; height:100%; background:var(--void); font-family:'Share Tech Mono',monospace; color:var(--text); -webkit-font-smoothing:antialiased; }
+    /* ANIMATIONS & EXTRAS */
+    @keyframes pulse-glow {
+      0% { box-shadow: 0 0 5px var(--accent); }
+      50% { box-shadow: 0 0 15px var(--accent); }
+      100% { box-shadow: 0 0 5px var(--accent); }
+    }
+    .pulse { animation: pulse-glow 2s infinite; }
+    #crypto-bg {
+      position: fixed; inset: 0; z-index: -1;
+      opacity: 0.05; pointer-events: none;
+    }
+    
+    /* ── AETHER ASTRO CSS ── */
+    .astro-today{
+      margin:12px 14px;border:1px solid var(--border);padding:16px;
+      text-align:center;background:var(--card-bg);position:relative;overflow:hidden;
+    }
+    .astro-today::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:1px;
+      background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    }
+    .moon-big{font-size:44px;display:block;margin-bottom:6px;}
+    .moon-name{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;color:var(--accent);letter-spacing:3px;}
+    .moon-impact{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted);margin-top:4px;letter-spacing:1px;}
+
+    /* ── ZODIAC WHEEL ── */
+    .wheel-wrap{
+      display:flex;flex-direction:column;align-items:center;
+      padding:8px 14px 14px;
+    }
+    #zodiac-wheel{width:100%;max-width:300px;height:auto;display:block;overflow:visible;}
+    .wheel-info{
+      margin-top:9px;
+      font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1.5px;color:var(--accent);
+      background:rgba(5,5,5,.9);border:1px solid var(--accent);
+      padding:6px 14px;text-align:center;line-height:1.9;
+    }
+    .wheel-info span{color:var(--text-muted);}
+
+    /* ── ASTRO STRATEGIES ── */
+    .astro-strat-grid {
+      display: grid; grid-template-columns: 1fr; gap: 8px; margin: 0 14px 14px;
+    }
+    .astrat {
+      border: 1px solid var(--border); background: var(--card-bg);
+      padding: 12px; position: relative; overflow: hidden;
+    }
+    .astrat::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+    }
+    .astrat.bullish { border-color: rgba(0,255,136,.2); }
+    .astrat.bullish::before { background: var(--green); }
+    .astrat.bearish { border-color: rgba(255,51,51,.2); }
+    .astrat.bearish::before { background: var(--red); }
+    .astrat.neutral { border-color: var(--lime); }
+    .astrat.neutral::before { background: var(--lime); }
+    .astrat-name {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 8px; letter-spacing: 2px; color: var(--text); margin-bottom: 6px;
+    }
+    .astrat-desc {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 7px; color: var(--chr-d); line-height: 1.6; margin-bottom: 10px;
+    }
+    .astrat-badge {
+      display: inline-block; padding: 3px 6px;
+      font-family: 'Share Tech Mono', monospace; font-size: 6px; letter-spacing: 1px;
+      color: var(--void); background: var(--chr-d); border-radius: 2px;
+    }
+    .astrat.bullish .astrat-badge { background: var(--green); color: #000; }
+    .astrat.bearish .astrat-badge { background: var(--red); color: #fff; }
+    .astrat.neutral .astrat-badge { background: var(--lime); color: #000; }
+
+    /* ── ASPECTS ── */
+    .asp-list{padding:0 14px;display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
+    .asp-card{
+      border:1px solid var(--border);padding:10px 12px;
+      display:flex;align-items:center;gap:10px;background:rgba(5,5,5,0.8);
+      border-left:2px solid var(--lime);
+    }
+    .asp-pl{font-size:14px;flex-shrink:0;}
+    .asp-name{font-family:'Share Tech Mono',monospace;font-size:8.5px;color:var(--lime);letter-spacing:1px;}
+    .asp-fx{font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--chr-d);margin-top:2px;line-height:1.6;}
+    .asp-dt{font-family:'Share Tech Mono',monospace;font-size:6.5px;color:var(--chr-d);margin-top:1px;}
+    .asp-badge{font-family:'Share Tech Mono',monospace;font-size:7px;letter-spacing:1px;padding:3px 7px;flex-shrink:0;}
+    .asp-badge.bull{color:var(--green);border:1px solid rgba(0,255,136,.2);}
+    .asp-badge.bear{color:var(--red);border:1px solid rgba(255,51,51,.2);}
+    .asp-badge.neut{color:var(--lime);border:1px solid var(--lime);}
+
+    /* ── ORACLE ── */
+    .oracle{
+      margin:0 14px 14px;border:1px solid var(--border);padding:16px;
+      background:rgba(5,5,5,0.8);position:relative;
+    }
+    .oracle::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:1px;
+      background:linear-gradient(90deg,transparent,var(--lime),transparent);opacity:.5;
+    }
+    .oracle-lbl{font-family:'Share Tech Mono',monospace;font-size:7px;letter-spacing:4px;color:var(--chr-d);margin-bottom:8px;}
+    .oracle-txt{font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(204,255,0,.85);line-height:1.9;}
+    .oracle-txt::before{content:'[LOG]: ';color:var(--lime);}
+
+    /* ── NEWS ── */
+    .news-list { display: flex; flex-direction: column; gap: 8px; margin: 0 14px 14px; }
+    .news-item {
+      border: 1px solid var(--border); background: rgba(5,5,5,0.8);
+      padding: 10px 12px; display: flex; align-items: flex-start; gap: 10px;
+    }
+    .news-src {
+      width: 20px; height: 20px; flex-shrink: 0;
+      background: var(--border); color: var(--chr-d);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: bold;
+    }
+    .news-title {
+      font-family: 'Share Tech Mono', monospace; font-size: 7.5px;
+      color: var(--text); line-height: 1.5; margin-bottom: 6px;
+    }
+    .news-tag {
+      display: inline-block; padding: 2px 6px; border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace; font-size: 6px; letter-spacing: 1px;
+    }
+    .news-tag.bull { background: rgba(0,255,136,.1); color: var(--green); border: 1px solid rgba(0,255,136,.3); }
+    .news-tag.bear { background: rgba(255,51,51,.1); color: var(--red); border: 1px solid rgba(255,51,51,.3); }
+    .news-tag.neut { background: rgba(204,255,0,.1); color: var(--lime); border: 1px solid rgba(204,255,0,.3); }
+
+    /* ── MARKET & TECHNICALS ── */
+    .mkt-pair{
+      margin:10px 14px;border:1px solid var(--border);
+      background:rgba(5,5,5,0.8);position:relative;overflow:hidden;
+    }
+    .mkt-pair::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:1px;
+      background:linear-gradient(90deg,transparent,var(--lime-b),transparent);opacity:.4;
+    }
+    .mkt-hdr{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:11px 14px;border-bottom:1px solid var(--chr-dd);
+    }
+    .mkt-name{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;color:var(--lime);}
+    .mkt-price{font-family:'Orbitron',monospace;font-size:18px;font-weight:700;color:var(--lime);}
+    .mkt-chg{font-family:'Share Tech Mono',monospace;font-size:8px;padding:2px 6px;margin-top:3px;display:inline-block;}
+    .mkt-chg.pos{color:var(--green);border:1px solid rgba(0,255,136,.2);}
+    .mkt-chg.neg{color:var(--red);border:1px solid rgba(255,51,51,.2);}
+    .mkt-inds{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:10px 14px;}
+    .mind{border:1px solid var(--border);padding:8px;background:rgba(0,0,0,.4);}
+    .mind-l{font-family:'Share Tech Mono',monospace;font-size:6.5px;color:var(--chr-d);letter-spacing:1px;}
+    .mind-v{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;color:var(--lime);margin-top:2px;}
+    .mind-v.bull{color:var(--green);}
+    .mind-v.bear{color:var(--red);}
+
+    /* CRT */
+    @keyframes flicker { 0%{opacity:.97} 5%{opacity:.95} 15%{opacity:1} }
+    .crt { position:fixed; inset:0; pointer-events:none; z-index:999;
+      background: linear-gradient(rgba(18,16,16,0) 50%,rgba(0,0,0,0.1) 50%),
+        repeating-linear-gradient(90deg,rgba(255,0,0,0.025),rgba(0,255,0,0.01),rgba(0,0,255,0.025) 3px);
+      background-size:100% 3px,3px 100%; animation:flicker .15s infinite; }
+
+    /* APP SHELL */
+    .app { position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; overflow:hidden; }
+
+    /* HEADER */
+    .header { flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+      padding:12px 18px; border-bottom:1px solid var(--chr-dd); background:rgba(5,5,5,0.98); z-index:20; position:relative; }
+    .header::after { content:''; position:absolute; bottom:-3px; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,var(--lime-b),transparent); }
+    .logo { font-family:'Orbitron',monospace; font-size:16px; color:var(--chr); letter-spacing:2px; }
+    .logo span { color:var(--lime); }
+    .header-r { display:flex; align-items:center; gap:12px; }
+    .live-badge { display:flex; align-items:center; gap:4px; font-size:9px; letter-spacing:2px; color:var(--lime); }
+    @keyframes blink { 0%,100%{opacity:1;box-shadow:0 0 5px var(--lime)} 50%{opacity:.15;box-shadow:none} }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:var(--lime); animation:blink 1.8s infinite; }
+    .price-display { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+    .price { font-size:14px; font-weight:bold; color:var(--lime); font-family:'Orbitron',monospace; }
+    .price-change { font-size:8px; color:var(--green); }
+    .price-change.negativo { color:var(--red); }
+
+    /* CONTENT */
+    .content { flex:1; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; }
+    .content::-webkit-scrollbar { width:4px; }
+    .content::-webkit-scrollbar-thumb { background:rgba(204,255,0,0.2); border-radius:2px; }
+
+    /* TABS */
+    .tabs { display:flex; border-bottom:1px solid var(--border); background:#020202;
+      position:sticky; top:0; z-index:10; padding:0 14px; }
+    .tab { flex:1; padding:10px 0; background:none; border:none; border-bottom:2px solid transparent;
+      color:var(--chr-d); font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px;
+      cursor:pointer; transition:.15s; text-align:center; text-transform:uppercase; }
+    .tab.active { color:var(--lime); border-bottom-color:var(--lime); }
+    .tab:hover:not(.active) { color:var(--text); }
+
+    /* TAB CONTENT */
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    /* SECTIONS */
+    .section { padding:14px; border-bottom:1px solid var(--border); }
+    .section-title { font-size:9px; letter-spacing:3px; color:var(--lime); margin-bottom:10px; text-transform:uppercase; font-weight:bold; }
+
+    /* CARD */
+    .card { background:rgba(5,5,5,0.8); border:1px solid var(--border2); padding:10px 12px;
+      margin-bottom:8px; border-radius:2px; transition:.2s; }
+    .card:hover { border-color:var(--lime-b); background:rgba(204,255,0,0.03); }
+    .card-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:9px; }
+    .card-row:last-child { margin-bottom:0; }
+    .card-label { color:var(--chr-d); }
+    .card-value { color:var(--lime); font-family:'Orbitron',monospace; font-weight:bold; font-size:9px; }
+
+    /* PROGRESS BAR */
+    .progress-bar { width:100%; height:3px; background:rgba(255,255,255,0.05); border-radius:1px; overflow:hidden; margin-top:6px; }
+    .progress-fill { height:100%; background:var(--lime); transition:.3s; box-shadow:0 0 4px var(--lime); }
+
+    /* BUTTONS */
+    .button-group { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .btn { padding:10px; border:1px solid var(--lime-b); background:var(--lime-p); color:var(--lime);
+      font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px; cursor:pointer;
+      transition:.2s; border-radius:1px; text-transform:uppercase; width:100%; }
+    .btn:hover { background:rgba(204,255,0,0.15); box-shadow:0 0 8px rgba(204,255,0,0.4); }
+    .btn:active { transform:scale(0.98); }
+    .btn-danger { border-color:var(--red); background:rgba(255,51,51,0.06); color:var(--red); }
+    .btn-danger:hover { background:rgba(255,51,51,0.15); box-shadow:0 0 8px rgba(255,51,51,0.4); }
+    .btn-success { border-color:var(--green); background:rgba(0,255,136,0.06); color:var(--green); }
+    .btn-success:hover { background:rgba(0,255,136,0.15); box-shadow:0 0 8px rgba(0,255,136,0.4); }
+    .btn-full { grid-column:1/-1; }
+
+    /* INPUT */
+    .input-field { width:100%; padding:8px 10px; background:rgba(255,255,255,0.03);
+      border:1px solid var(--border2); color:var(--lime); font-family:'Share Tech Mono',monospace;
+      font-size:9px; border-radius:1px; margin-bottom:8px; }
+    .input-field::placeholder { color:var(--chr-d); }
+    .input-field:focus { outline:none; border-color:var(--lime-b); }
+    .input-label { font-size:8px; color:var(--chr-d); margin-bottom:4px; letter-spacing:1px; }
+
+    select.input-field { cursor:pointer; }
+    select.input-field option { background:#0a0a0a; }
+
+    /* ALERTS */
+    .alert { padding:8px 12px; font-size:8px; border-radius:1px; margin-bottom:8px; border-left:2px solid; }
+    .alert-success { background:rgba(0,255,136,0.05); border-color:var(--green); color:var(--green); }
+    .alert-error   { background:rgba(255,51,51,0.05); border-color:var(--red);   color:var(--red); }
+    .alert-warning { background:rgba(204,255,0,0.05); border-color:var(--lime);  color:var(--lime); }
+    #stato-connessione { margin-bottom:0; }
+
+    /* SPINNER */
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .spinner { display:inline-block; width:10px; height:10px; border:2px solid var(--lime-b);
+      border-top-color:var(--lime); border-radius:50%; animation:spin 1s linear infinite; vertical-align:middle; }
+
+    /* BADGE */
+    .badge { display:inline-block; padding:2px 6px; border-radius:1px; font-size:7px; letter-spacing:1px; font-weight:bold; }
+    .badge-long  { background:rgba(0,255,136,0.15); color:var(--green); border:1px solid rgba(0,255,136,0.3); }
+    .badge-short { background:rgba(255,51,51,0.15); color:var(--red);   border:1px solid rgba(255,51,51,0.3); }
+
+    /* FOOTER NAV */
+    .footer { flex-shrink:0; display:flex; justify-content:space-around; align-items:center;
+      padding:8px 0; border-top:1px solid var(--chr-dd); background:rgba(5,5,5,0.99); }
+    .footer-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:8px; gap:3px; background:none; border:none; cursor:pointer; color:var(--chr-d); transition:.2s; position:relative; }
+    .footer-btn::before { content:''; position:absolute; top:0; left:25%; right:25%; height:1px;
+      background:var(--lime); opacity:0; transition:.2s; }
+    .footer-btn.active::before { opacity:1; box-shadow:0 0 6px var(--lime); }
+    .footer-btn.active { color:var(--lime); }
+    .footer-icon { font-size:13px; }
+    .footer-label { font-size:7px; letter-spacing:2px; }
+
+    /* NOTIFICA */
+    @keyframes slideIn { from{transform:translateX(310px);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes slideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(310px);opacity:0} }
+    .notifica { position:fixed; top:60px; right:14px; z-index:2000; max-width:280px;
+      padding:10px 14px; border-radius:2px; font-size:8px; letter-spacing:.5px;
+      animation:slideIn .3s ease-out; }
+  </style>
+</head>
+<body>
+  <div class="crt"></div>
+
+  <div class="app">
+    <!-- HEADER -->
+    <div class="header">
+      <div>
+        <div class="logo"><span>SCALPER</span> BOT</div>
+      </div>
+      <div class="header-r">
+        <div class="live-badge">
+          <span class="live-dot" id="live-dot"></span>
+          <span id="live-status">OFFLINE</span>
+        </div>
+        <div class="price-display">
+          <div class="price" id="prezzo-attuale">-</div>
+          <div class="price-change" id="variazione-24h">+0.00%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" data-tab="dashboard" id="tab-dashboard">DASH</button>
+      <button class="tab" data-tab="trade" id="tab-trade">TRADE</button>
+      <button class="tab" data-tab="posizioni" id="tab-posizioni">POS.</button>
+      <button class="tab" data-tab="astro" id="tab-astro">✦ ASTRO</button>
+      <button class="tab" data-tab="impostazioni" id="tab-impostazioni">⚙</button>
+    </div>
+
+    <!-- CONTENUTO -->
+    <div class="content">
+
+      <!-- ══════════ DASHBOARD ══════════ -->
+      <div id="dashboard" class="tab-content active">
+        <div class="section">
+          <div class="section-title">· STATO CONNESSIONE ·</div>
+          <div class="alert alert-warning" id="stato-connessione">
+            <span class="spinner"></span>&nbsp; Connessione in corso...
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">· MERCATO ·</div>
+          <div class="card">
+            <div class="card-row">
+              <span class="card-label">ASSET</span>
+              <span class="card-value" id="asset-display">XRP/USDT</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">PREZZO ATTUALE</span>
+              <span class="card-value" id="mercato-prezzo">-</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">MASSIMO 24H</span>
+              <span class="card-value" id="mercato-max">-</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">MINIMO 24H</span>
+              <span class="card-value" id="mercato-min">-</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">VOLUME 24H</span>
+              <span class="card-value" id="mercato-volume">-</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">BID / ASK</span>
+              <span class="card-value" id="mercato-bidask">- / -</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">· ANALISI TECNICA ·</div>
+          <div class="card">
+            <div class="card-row">
+              <span class="card-label">EMA 5</span>
+              <span class="card-value" id="ema5-val">-</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">EMA 20</span>
+              <span class="card-value" id="ema20-val">-</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">RSI (14)</span>
+              <span class="card-value" id="rsi-val">-</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">SEGNALE</span>
+              <span class="card-value" id="segnale-val" style="letter-spacing:2px">ATTENDI</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">· PORTAFOGLIO ·</div>
+          <div class="card">
+            <div class="card-row">
+              <span class="card-label">SALDO TOTALE</span>
+              <span class="card-value" id="saldo-totale">$0.00</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">DISPONIBILE</span>
+              <span class="card-value" id="saldo-disponibile">$0.00</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">IN POSIZIONE</span>
+              <span class="card-value" id="saldo-posizione">$0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">· PERFORMANCE ·</div>
+          <div class="card">
+            <div class="card-row">
+              <span class="card-label">TRADE TOTALI</span>
+              <span class="card-value" id="trade-totali">0</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">PROFITTO/PERDITA</span>
+              <span class="card-value" id="pnl-totale">$0.00</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">GUADAGNO %</span>
+              <span class="card-value" id="guadagno-pct">0.00%</span>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-pnl" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ TRADE ══════════ -->
+      <div id="trade" class="tab-content">
+        <div class="section">
+          <div class="section-title">· ESEGUI ORDINE ·</div>
+
+          <div class="alert alert-warning">
+            Assicurati di avere fondi sufficienti prima di operare.
+          </div>
+
+          <div class="input-label">TIPO OPERAZIONE</div>
+          <select id="tipo-trade" class="input-field">
+            <option value="BUY">ACQUISTA (LONG)</option>
+            <option value="SELL">VENDI (SHORT)</option>
+          </select>
+
+          <div class="input-label">IMPORTO (USDT)</div>
+          <input type="number" id="importo-trade" class="input-field" placeholder="Es: 100" value="100" min="1">
+
+          <div class="input-label">STOP LOSS (%)</div>
+          <input type="number" id="stop-loss" class="input-field" placeholder="Es: 2" value="2" min="0.1" step="0.1">
+
+          <div class="input-label">TAKE PROFIT (%)</div>
+          <input type="number" id="take-profit" class="input-field" placeholder="Es: 3" value="3" min="0.1" step="0.1">
+
+          <div id="anteprima-trade" class="card" style="margin-top:4px">
+            <div class="card-row">
+              <span class="card-label">VALORE ORDINE</span>
+              <span class="card-value" id="prev-valore">$100.00</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">STOP LOSS A</span>
+              <span class="card-value" id="prev-sl">-</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">TAKE PROFIT A</span>
+              <span class="card-value" id="prev-tp">-</span>
+            </div>
+          </div>
+
+          <div class="button-group" style="margin-top:10px">
+            <button class="btn btn-success" id="btn-acquista">⬆ ACQUISTA</button>
+            <button class="btn btn-danger"  id="btn-vendi">⬇ VENDI</button>
+          </div>
+
+          <div id="risultato-trade" style="margin-top:10px"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">· BOT AUTOMATICO ·</div>
+          <div class="card">
+            <div class="card-row">
+              <span class="card-label">STRATEGIA</span>
+              <span class="card-value">SCALPING AVANZATO</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">STATO BOT</span>
+              <span class="card-value" id="stato-bot">FERMATO</span>
+            </div>
+          </div>
+          <div class="button-group">
+            <button class="btn btn-success" id="btn-avvia-bot">▶ AVVIA BOT</button>
+            <button class="btn btn-danger"  id="btn-ferma-bot">■ FERMA BOT</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ POSIZIONI ══════════ -->
+      <div id="posizioni" class="tab-content">
+        <div class="section">
+          <div class="section-title">· POSIZIONI APERTE ·</div>
+          <div id="lista-posizioni">
+            <div class="card">
+              <div class="card-row">
+                <span class="card-label">NESSUNA POSIZIONE APERTA</span>
+                <span class="card-value">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">· STORICO OPERAZIONI ·</div>
+          <div id="storico-trade">
+            <div class="card">
+              <div class="card-row">
+                <span class="card-label">NESSUNA OPERAZIONE</span>
+                <span class="card-value">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ ASTRO ══════════ -->
+      <div id="astro" class="tab-content">
+        
+        <div class="section-title" style="margin:14px 14px 4px;">· PREZZI REALTIME & TECNICA ·</div>
+        <div class="mkt-pair" id="mp-BTC">
+          <div class="mkt-hdr">
+            <div><div class="mkt-name">BTC/USDT</div><div class="mkt-chg pos" id="m-chg-BTC">—</div></div>
+            <div style="text-align:right;"><div class="mkt-price" id="m-price-BTC">—</div></div>
+          </div>
+          <div class="mkt-inds">
+            <div class="mind"><div class="mind-l">RSI_14</div><div class="mind-v" id="m-rsi-BTC">—</div></div>
+            <div class="mind"><div class="mind-l">MACD</div><div class="mind-v" id="m-macd-BTC">—</div></div>
+            <div class="mind"><div class="mind-l">EMA_200</div><div class="mind-v" id="m-ema-BTC">—</div></div>
+            <div class="mind"><div class="mind-l">VOL</div><div class="mind-v" id="m-vol-BTC">—</div></div>
+            <div class="mind"><div class="mind-l">F&amp;G</div><div class="mind-v" id="m-fg-BTC">—</div></div>
+            <div class="mind"><div class="mind-l">SIGNAL</div><div class="mind-v" id="m-sig-BTC">—</div></div>
+          </div>
+        </div>
+        <div class="mkt-pair" id="mp-XRP">
+          <div class="mkt-hdr">
+            <div><div class="mkt-name">XRP/USDT</div><div class="mkt-chg pos" id="m-chg-XRP">—</div></div>
+            <div style="text-align:right;"><div class="mkt-price" id="m-price-XRP">—</div></div>
+          </div>
+          <div class="mkt-inds">
+            <div class="mind"><div class="mind-l">RSI_14</div><div class="mind-v" id="m-rsi-XRP">—</div></div>
+            <div class="mind"><div class="mind-l">MACD</div><div class="mind-v" id="m-macd-XRP">—</div></div>
+            <div class="mind"><div class="mind-l">EMA_200</div><div class="mind-v" id="m-ema-XRP">—</div></div>
+            <div class="mind"><div class="mind-l">VOL</div><div class="mind-v" id="m-vol-XRP">—</div></div>
+            <div class="mind"><div class="mind-l">F&amp;G</div><div class="mind-v" id="m-fg-XRP">—</div></div>
+            <div class="mind"><div class="mind-l">SIGNAL</div><div class="mind-v" id="m-sig-XRP">—</div></div>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin:14px 14px 4px;">· INFLUSSO LUNARE ·</div>
+        <!-- Dashboard Superiore -->
+        <div class="astro-today">
+          <span class="moon-big" id="moon-emoji">🌔</span>
+          <div class="moon-name" id="moon-name">CALCOLO...</div>
+          <div class="moon-impact" id="moon-impact">—</div>
+        </div>
+
+        <div class="wheel-wrap">
+          <svg id="zodiac-wheel" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="rGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#88aa00" stop-opacity=".45"/>
+                <stop offset="50%" stop-color="#ccff00" stop-opacity=".8"/>
+                <stop offset="100%" stop-color="#88aa00" stop-opacity=".45"/>
+              </linearGradient>
+              <radialGradient id="sunG" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ccff00" stop-opacity="1"/>
+                <stop offset="55%" stop-color="#88aa00" stop-opacity=".6"/>
+                <stop offset="100%" stop-color="#ccff00" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="moonLitG" cx="40%" cy="40%" r="60%">
+                <stop offset="0%" stop-color="#ddff66" stop-opacity="1"/>
+                <stop offset="100%" stop-color="#88aa00" stop-opacity=".85"/>
+              </radialGradient>
+              <radialGradient id="moonDkG" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#0a0a0a"/>
+                <stop offset="100%" stop-color="#050505"/>
+              </radialGradient>
+              <filter id="mGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="2.5" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <filter id="sGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="5" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <clipPath id="moonClip">
+                <rect id="moonClipRect" x="-12" y="-12" width="24" height="24"/>
+              </clipPath>
+            </defs>
+            <circle cx="200" cy="200" r="190" fill="none" stroke="url(#rGrad)" stroke-width=".5" opacity=".3"/>
+            <circle cx="200" cy="200" r="178" fill="none" stroke="rgba(204,255,0,.12)" stroke-width=".8"/>
+            <circle cx="200" cy="200" r="148" fill="none" stroke="rgba(204,255,0,.08)" stroke-width=".7"/>
+            <g id="zodiac-dividers" stroke="rgba(204,255,0,.1)" stroke-width=".7"/>
+            <g id="zodiac-symbols" font-family="'Share Tech Mono',monospace" font-size="14" fill="#88aa00" opacity=".8" text-anchor="middle" dominant-baseline="central"/>
+            <circle cx="200" cy="200" r="148" fill="none" stroke="rgba(204,255,0,.04)" stroke-width="1" stroke-dasharray="3 6"/>
+            <circle cx="200" cy="200" r="60" fill="none" stroke="rgba(204,255,0,.07)" stroke-width=".5"/>
+            <circle cx="200" cy="200" r="42" fill="none" stroke="rgba(204,255,0,.04)" stroke-width=".5"/>
+            <circle cx="200" cy="200" r="34" fill="rgba(204,255,0,.03)" filter="url(#sGlow)"/>
+            <g id="sun-rays" stroke="#ccff00" stroke-width=".8" opacity=".18"/>
+            <circle cx="200" cy="200" r="13" fill="url(#sunG)" filter="url(#sGlow)" opacity=".9"/>
+            <circle cx="200" cy="200" r="7" fill="#ccff00" opacity=".45"/>
+            <circle cx="200" cy="200" r="3" fill="#eeff88" opacity=".4"/>
+            <g id="moon-orbit-group">
+              <g id="moon-body" transform="translate(200,52)">
+                <circle cx="0" cy="0" r="11" fill="url(#moonDkG)"/>
+                <ellipse id="moon-lit-ellipse" cx="0" cy="0" rx="11" ry="11" fill="url(#moonLitG)" clip-path="url(#moonClip)"/>
+                <circle cx="0" cy="0" r="11" fill="none" stroke="rgba(204,255,0,.45)" stroke-width=".8" filter="url(#mGlow)"/>
+              </g>
+            </g>
+          </svg>
+          <div class="wheel-info">
+            <div id="wheel-moon-sign">⟳ Calcolo posizione lunare...</div>
+            <span id="wheel-moon-phase-detail"></span>
+          </div>
+        </div>
+
+        <div class="section-title">· ASTRO STRATEGIES ·</div>
+        <div class="astro-strat-grid" id="astro-strat-grid">
+          <!-- Popolato via JS -->
+          <div style="text-align:center;padding:20px;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted);">[LOG]: ⟳ Calcolo strategie...</div>
+        </div>
+
+        <div class="section-title">· ASPETTI PLANETARI ·</div>
+        <div class="asp-list" id="aspects-list">
+          <div style="text-align:center;padding:20px;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted);">[LOG]: ⟳ Calcolo aspetti...</div>
+        </div>
+
+        <div class="section-title">· ORACOLO_ÆTHER ·</div>
+        <div class="oracle">
+          <div class="oracle-lbl">// LETTURA_ASTRO · OGGI</div>
+          <div class="oracle-txt" id="oracle-txt">Calcolo in corso...</div>
+        </div>
+        
+        <div class="section-title">· NEWS ASTRO/FINANZA ·</div>
+        <div class="news-list" id="news-feed">
+           <!-- Popolato via JS -->
+        </div>
+
+      </div>
+
+      <!-- ══════════ IMPOSTAZIONI ══════════ -->
+      <div id="impostazioni" class="tab-content">
+        <div class="section">
+          <div class="section-title">· SIMBOLO DI TRADING ·</div>
+
+          <div class="input-label">COPPIA (es: XRPUSDT, BTCUSDT, ETHUSDT)</div>
+          <input type="text" id="input-simbolo" class="input-field" placeholder="XRPUSDT" value="XRPUSDT">
+          <button class="btn btn-full" id="btn-cambia-simbolo">CAMBIA SIMBOLO</button>
+          <div id="risultato-simbolo" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">· CREDENZIALI API ·</div>
+          <div class="alert alert-warning">
+            Le credenziali vengono salvate localmente nel browser. Non vengono inviate a server esterni.
+          </div>
+
+          <div class="input-label">API KEY BITGET</div>
+          <input type="password" id="input-api-key" class="input-field" placeholder="Inserisci API Key">
+
+          <div class="input-label">API SECRET</div>
+          <input type="password" id="input-api-secret" class="input-field" placeholder="Inserisci API Secret">
+
+          <div class="input-label">PASSPHRASE</div>
+          <input type="password" id="input-passphrase" class="input-field" placeholder="Inserisci Passphrase">
+
+          <button class="btn btn-full" id="btn-salva-api">SALVA CREDENZIALI</button>
+          <div id="risultato-api" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">· PARAMETRI RISCHIO ·</div>
+
+          <div class="input-label">RISCHIO PER TRADE (%)</div>
+          <input type="number" id="input-rischio" class="input-field" placeholder="2" value="2" min="0.1" step="0.1">
+
+          <div class="input-label">PERDITA MAX GIORNALIERA (%)</div>
+          <input type="number" id="input-perdita-max" class="input-field" placeholder="5" value="5" min="1" step="0.5">
+
+          <div class="input-label">LEVA</div>
+          <select id="input-leva" class="input-field">
+            <option value="1">1x</option>
+            <option value="2">2x</option>
+            <option value="3">3x</option>
+            <option value="5" selected>5x</option>
+            <option value="10">10x</option>
+            <option value="20">20x</option>
+          </select>
+
+          <button class="btn btn-full" id="btn-salva-parametri">SALVA PARAMETRI</button>
+          <div id="risultato-parametri" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">· INFORMAZIONI SISTEMA ·</div>
+          <div class="card">
+            <div class="card-row">
+              <span class="card-label">VERSIONE</span>
+              <span class="card-value">2.0.0</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">EXCHANGE</span>
+              <span class="card-value">BITGET FUTURES</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">COPPIA ATTIVA</span>
+              <span class="card-value" id="info-coppia">XRP/USDT</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">MODALITÀ</span>
+              <span class="card-value" id="info-modalita">-</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">ULTIMO AGGIORN.</span>
+              <span class="card-value" id="info-aggiorn">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- fine .content -->
+
+    <!-- FOOTER NAV -->
+    <div class="footer">
+      <button class="footer-btn active" data-nav="dashboard">
+        <span class="footer-icon">📊</span>
+        <span class="footer-label">DASHBOARD</span>
+      </button>
+      <button class="footer-btn" data-nav="trade">
+        <span class="footer-icon">💹</span>
+        <span class="footer-label">TRADE</span>
+      </button>
+      <button class="footer-btn" data-nav="posizioni">
+        <span class="footer-icon">📈</span>
+        <span class="footer-label">POSIZIONI</span>
+      </button>
+      <button class="footer-btn" data-nav="astro">
+        <span class="footer-icon">✦</span>
+        <span class="footer-label">ASTRO</span>
+      </button>
+      <button class="footer-btn" data-nav="impostazioni">
+        <span class="footer-icon">⚙️</span>
+        <span class="footer-label">IMPOST.</span>
+      </button>
+    </div>
+  </div><!-- fine .app -->
+
+  <script>
+  // ═══════════════════════════════════════════════════
+  // SCALPER BOT — APP PRINCIPALE
+  // ═══════════════════════════════════════════════════
+  const API = 'http://localhost:8889/api';
+  let connesso = false;
+  let datiPrezzo = {};
+  let simboloAttivo = localStorage.getItem('simbolo') || 'XRPUSDT';
+
+  // ── NAVIGAZIONE TAB ──────────────────────────────────
+  function apriTab(nome) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.footer-btn').forEach(el => el.classList.remove('active'));
+    const content = document.getElementById(nome);
+    if (content) content.classList.add('active');
+    document.querySelector(`[data-tab="${nome}"]`)?.classList.add('active');
+    document.querySelector(`[data-nav="${nome}"]`)?.classList.add('active');
+    if (nome === 'posizioni') caricaPosizioni();
+    if (nome === 'astro' && !window.astroInizializzato) {
+      setTimeout(() => {
+        initWheelAstro();
+        window.astroInizializzato = true;
+      }, 100);
+    }
+  }
+
+  document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => apriTab(btn.dataset.tab)));
+  document.querySelectorAll('.footer-btn').forEach(btn => btn.addEventListener('click', () => apriTab(btn.dataset.nav)));
+
+  // ── NOTIFICHE ────────────────────────────────────────
+  function notifica(msg, tipo = 'success') {
+    const el = document.createElement('div');
+    const colori = { success: 'alert-success', error: 'alert-error', warning: 'alert-warning' };
+    el.className = `notifica alert ${colori[tipo] || 'alert-success'}`;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.animation = 'slideOut .3s ease-out'; setTimeout(() => el.remove(), 280); }, 3500);
+  }
+
+  // ── CONNESSIONE ──────────────────────────────────────
+  async function verificaConnessione() {
+    try {
+      const r = await fetch(`${API}/status`, { signal: AbortSignal.timeout(4000) });
+      if (r.ok) {
+        const d = await r.json();
+        connesso = true;
+        aggiornaStatoConnessione(true, d.symbol || simboloAttivo);
+        return;
+      }
+    } catch {}
+    connesso = false;
+    aggiornaStatoConnessione(false);
+    setTimeout(verificaConnessione, 5000);
+  }
+
+  function aggiornaStatoConnessione(ok, symbol = '') {
+    const dot    = document.getElementById('live-dot');
+    const status = document.getElementById('live-status');
+    const stato  = document.getElementById('stato-connessione');
+
+    if (ok) {
+      status.textContent = 'ONLINE';
+      dot.style.background = 'var(--lime)';
+      stato.className = 'alert alert-success';
+      stato.textContent = `✓ CONNESSO A BITGET FUTURES${symbol ? ' · ' + symbol : ''}`;
+    } else {
+      status.textContent = 'OFFLINE';
+      dot.style.background = 'var(--red)';
+      dot.style.animation = 'none';
+      stato.className = 'alert alert-error';
+      stato.textContent = '✗ SERVER NON RAGGIUNGIBILE — Avvia python server.py';
+    }
+  }
+
+  // ── FETCH PREZZO ─────────────────────────────────────
+  async function aggiornaPrezzi() {
+    if (!connesso) return;
+    try {
+      const r = await fetch(`${API}/price`, { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) return;
+      const d = await r.json();
+      datiPrezzo = d;
+      const p = parseFloat(d.price || 0);
+      const chg = parseFloat(d.change24h || 0);
+      const decimali = p < 1 ? 5 : p < 100 ? 4 : 2;
+
+      // Header
+      document.getElementById('prezzo-attuale').textContent = `$${p.toFixed(decimali)}`;
+      const chgEl = document.getElementById('variazione-24h');
+      chgEl.textContent = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
+      chgEl.className = `price-change ${chg < 0 ? 'negativo' : ''}`;
+
+      // Dashboard mercato
+      document.getElementById('mercato-prezzo').textContent = `$${p.toFixed(decimali)}`;
+      document.getElementById('mercato-max').textContent = `$${parseFloat(d.high24h||0).toFixed(decimali)}`;
+      document.getElementById('mercato-min').textContent = `$${parseFloat(d.low24h||0).toFixed(decimali)}`;
+      document.getElementById('mercato-volume').textContent = `${(parseFloat(d.volume24h||0)/1e6).toFixed(2)}M`;
+      document.getElementById('mercato-bidask').textContent =
+        `$${parseFloat(d.bid||0).toFixed(decimali)} / $${parseFloat(d.ask||0).toFixed(decimali)}`;
+
+      // Anteprima trade
+      aggiornaAnteprimaTrade();
+
+      // Info aggiornamento
+      document.getElementById('info-aggiorn').textContent = new Date().toLocaleTimeString('it-IT');
+    } catch {}
+  }
+
+  // ── FETCH ANALISI TECNICA ────────────────────────────
+  async function aggiornaAnalisi() {
+    if (!connesso) return;
+    try {
+      const r = await fetch(`${API}/market-data`, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return;
+      const d = await r.json();
+      const ind = d.indicators || {};
+
+      const dec = (parseFloat(datiPrezzo.price || 0)) < 1 ? 5 : 4;
+      if (ind.ema5)  document.getElementById('ema5-val').textContent  = `$${ind.ema5.toFixed(dec)}`;
+      if (ind.ema20) document.getElementById('ema20-val').textContent = `$${ind.ema20.toFixed(dec)}`;
+
+      if (ind.rsi != null) {
+        const rsiEl = document.getElementById('rsi-val');
+        rsiEl.textContent = ind.rsi.toFixed(1);
+        rsiEl.style.color = ind.rsi > 70 ? 'var(--red)' : ind.rsi < 30 ? 'var(--green)' : 'var(--lime)';
+      }
+
+      if (ind.signal) {
+        const sigEl = document.getElementById('segnale-val');
+        sigEl.textContent = ind.signal;
+        sigEl.style.color = ind.signal === 'ACQUISTA' ? 'var(--green)' :
+                            ind.signal === 'VENDI'    ? 'var(--red)'   : 'var(--lime)';
+      }
+    } catch {}
+  }
+
+  // ── FETCH SALDO ──────────────────────────────────────
+  async function aggiornaSaldo() {
+    if (!connesso) return;
+    try {
+      const r = await fetch(`${API}/balance`, { signal: AbortSignal.timeout(6000) });
+      if (!r.ok) return;
+      const d = await r.json();
+      document.getElementById('saldo-totale').textContent     = `$${parseFloat(d.totale||0).toFixed(2)}`;
+      document.getElementById('saldo-disponibile').textContent= `$${parseFloat(d.disponibile||0).toFixed(2)}`;
+      document.getElementById('saldo-posizione').textContent  = `$${parseFloat(d.in_posizione||0).toFixed(2)}`;
+      document.getElementById('info-modalita').textContent    = (d.modalita||'demo').toUpperCase();
+    } catch {}
+  }
+
+  // ── FETCH TRADE ──────────────────────────────────────
+  async function aggiornaStorico() {
+    if (!connesso) return;
+    try {
+      const r = await fetch(`${API}/trades`, { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) return;
+      const d = await r.json();
+      const trades = d.trades || [];
+      document.getElementById('trade-totali').textContent = trades.length;
+
+      let pnl = trades.reduce((s, t) => s + (parseFloat(t.profit||0)),0);
+      const pnlEl = document.getElementById('pnl-totale');
+      pnlEl.textContent = `${pnl>=0?'+':''}$${Math.abs(pnl).toFixed(2)}`;
+      pnlEl.style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+
+      const pct = (pnl / 1000 * 100);
+      document.getElementById('guadagno-pct').textContent = `${pct>=0?'+':''}${pct.toFixed(2)}%`;
+      document.getElementById('progress-pnl').style.width = `${Math.min(Math.max(pct+50, 0), 100)}%`;
+
+      // Storico
+      const storEl = document.getElementById('storico-trade');
+      if (trades.length === 0) {
+        storEl.innerHTML = '<div class="card"><div class="card-row"><span class="card-label">NESSUNA OPERAZIONE</span><span class="card-value">-</span></div></div>';
+      } else {
+        storEl.innerHTML = trades.slice().reverse().map(t => {
+          const isBuy = t.side === 'BUY';
+          const p = parseFloat(t.price||0);
+          const dec = p < 1 ? 5 : 4;
+          return `<div class="card">
+            <div class="card-row">
+              <span class="card-label">TIPO</span>
+              <span class="card-value" style="color:${isBuy?'var(--green)':'var(--red)'}">
+                ${isBuy ? '⬆ ACQUISTO' : '⬇ VENDITA'}
+              </span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">IMPORTO</span>
+              <span class="card-value">$${parseFloat(t.quantity||0).toFixed(2)}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">PREZZO</span>
+              <span class="card-value">$${p.toFixed(dec)}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">ORA</span>
+              <span class="card-value">${new Date(t.timestamp||Date.now()).toLocaleTimeString('it-IT')}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">STATO</span>
+              <span class="card-value">${(t.status||'').toUpperCase()} ${t.modalita==='demo'?'(DEMO)':''}</span>
+            </div>
+          </div>`;
+        }).join('');
+      }
+    } catch {}
+  }
+
+  // ── POSIZIONI APERTE ─────────────────────────────────
+  async function caricaPosizioni() {
+    if (!connesso) return;
+    const el = document.getElementById('lista-posizioni');
+    el.innerHTML = '<div class="card"><div class="card-row"><span class="card-label"><span class="spinner"></span> Caricamento...</span></div></div>';
+    try {
+      const r = await fetch(`${API}/positions`, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error('Errore risposta');
+      const d = await r.json();
+      const poss = d.posizioni || [];
+      if (poss.length === 0) {
+        el.innerHTML = '<div class="card"><div class="card-row"><span class="card-label">NESSUNA POSIZIONE APERTA</span><span class="card-value">-</span></div></div>';
+      } else {
+        el.innerHTML = poss.map(p => {
+          const isLong = p.direzione === 'LONG';
+          const dec = parseFloat(p.prezzo_entrata) < 1 ? 5 : 4;
+          return `<div class="card">
+            <div class="card-row">
+              <span class="card-label">SIMBOLO</span>
+              <span class="card-value">${p.simbolo}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">DIREZIONE</span>
+              <span class="badge ${isLong?'badge-long':'badge-short'}">${p.direzione}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">QUANTITÀ</span>
+              <span class="card-value">${p.quantita}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">PREZZO ENTRATA</span>
+              <span class="card-value">$${parseFloat(p.prezzo_entrata).toFixed(dec)}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">PREZZO ATTUALE</span>
+              <span class="card-value">$${parseFloat(p.prezzo_attuale).toFixed(dec)}</span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">P&L NON REALIZZATO</span>
+              <span class="card-value" style="color:${p.pnl>=0?'var(--green)':'var(--red)'}">
+                ${p.pnl>=0?'+':''}$${p.pnl.toFixed(2)}
+              </span>
+            </div>
+            <div class="card-row">
+              <span class="card-label">LEVA</span>
+              <span class="card-value">${p.leva}x</span>
+            </div>
+          </div>`;
+        }).join('');
+      }
+    } catch (e) {
+      el.innerHTML = `<div class="card"><div class="card-row"><span class="card-label" style="color:var(--red)">Errore caricamento posizioni</span></div></div>`;
+    }
+  }
+
+  // ── ESEGUI TRADE ─────────────────────────────────────
+  async function eseguiTrade(side) {
+    const importo = parseFloat(document.getElementById('importo-trade').value);
+    if (!importo || importo <= 0) { notifica('⚠️ Inserisci un importo valido', 'warning'); return; }
+    if (!connesso) { notifica('❌ Server non raggiungibile', 'error'); return; }
+
+    const risRes = document.getElementById('risultato-trade');
+    risRes.innerHTML = '<div class="alert alert-warning"><span class="spinner"></span> Invio ordine...</div>';
+
+    try {
+      const r = await fetch(`${API}/trade`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ side, quantity: importo })
+      });
+      const d = await r.json();
+      if (d.successo) {
+        const tipo = side === 'BUY' ? '⬆ ACQUISTO' : '⬇ VENDITA';
+        risRes.innerHTML = `<div class="alert alert-success">${tipo} di $${importo} eseguito${d.modalita==='demo'?' (Demo)':''}!</div>`;
+        notifica(`✅ ${tipo} $${importo} USDT`, 'success');
+        await aggiornaStorico();
+      } else {
+        risRes.innerHTML = `<div class="alert alert-error">❌ ${d.errore || 'Errore ordine'}</div>`;
+        notifica('❌ Ordine fallito', 'error');
+      }
+    } catch (e) {
+      risRes.innerHTML = `<div class="alert alert-error">❌ Connessione interrotta</div>`;
+    }
+  }
+
+  document.getElementById('btn-acquista').addEventListener('click', () => eseguiTrade('BUY'));
+  document.getElementById('btn-vendi').addEventListener('click', () => eseguiTrade('SELL'));
+
+  // ── ANTEPRIMA TRADE ──────────────────────────────────
+  function aggiornaAnteprimaTrade() {
+    const importo = parseFloat(document.getElementById('importo-trade').value) || 0;
+    const sl = parseFloat(document.getElementById('stop-loss').value) || 0;
+    const tp = parseFloat(document.getElementById('take-profit').value) || 0;
+    const p = parseFloat(datiPrezzo.price || 0);
+    const dec = p < 1 ? 5 : 4;
+
+    document.getElementById('prev-valore').textContent = `$${importo.toFixed(2)}`;
+    document.getElementById('prev-sl').textContent = p > 0 ? `$${(p * (1 - sl/100)).toFixed(dec)}` : '-';
+    document.getElementById('prev-tp').textContent = p > 0 ? `$${(p * (1 + tp/100)).toFixed(dec)}` : '-';
+  }
+
+  ['importo-trade','stop-loss','take-profit'].forEach(id =>
+    document.getElementById(id)?.addEventListener('input', aggiornaAnteprimaTrade));
+
+  // ── BOT START/STOP ───────────────────────────────────
+  document.getElementById('btn-avvia-bot').addEventListener('click', async () => {
+    try {
+      const r = await fetch(`${API}/bot/start`, { method: 'POST' });
+      const d = await r.json();
+      if (d.successo) {
+        document.getElementById('stato-bot').textContent = 'ATTIVO';
+        document.getElementById('stato-bot').style.color = 'var(--green)';
+        notifica('▶ Bot avviato', 'success');
+      }
+    } catch { notifica('❌ Errore avvio bot', 'error'); }
+  });
+
+  document.getElementById('btn-ferma-bot').addEventListener('click', async () => {
+    try {
+      const r = await fetch(`${API}/bot/stop`, { method: 'POST' });
+      const d = await r.json();
+      if (d.successo) {
+        document.getElementById('stato-bot').textContent = 'FERMATO';
+        document.getElementById('stato-bot').style.color = 'var(--red)';
+        notifica('■ Bot fermato', 'warning');
+      }
+    } catch { notifica('❌ Errore fermo bot', 'error'); }
+  });
+
+  // ── CAMBIO SIMBOLO ───────────────────────────────────
+  document.getElementById('btn-cambia-simbolo').addEventListener('click', async () => {
+    const sym = (document.getElementById('input-simbolo').value || '').toUpperCase().trim();
+    if (!sym) { notifica('⚠️ Inserisci un simbolo valido', 'warning'); return; }
+    const el = document.getElementById('risultato-simbolo');
+    el.innerHTML = '<div class="alert alert-warning"><span class="spinner"></span> Verifica in corso...</div>';
+    try {
+      const r = await fetch(`${API}/symbol`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: sym })
+      });
+      const d = await r.json();
+      if (d.successo) {
+        simboloAttivo = sym;
+        localStorage.setItem('simbolo', sym);
+        document.getElementById('asset-display').textContent = sym.replace('USDT', '/USDT');
+        document.getElementById('info-coppia').textContent = sym.replace('USDT', '/USDT');
+        el.innerHTML = `<div class="alert alert-success">✓ Simbolo cambiato a ${sym} — Prezzo: $${d.prezzo}</div>`;
+        notifica(`✅ Simbolo: ${sym}`, 'success');
+      } else {
+        el.innerHTML = `<div class="alert alert-error">❌ ${d.errore || 'Simbolo non trovato'}</div>`;
+      }
+    } catch { el.innerHTML = '<div class="alert alert-error">❌ Errore connessione</div>'; }
+  });
+
+  // ── SALVATAGGIO CREDENZIALI ──────────────────────────
+  document.getElementById('btn-salva-api').addEventListener('click', () => {
+    const key   = document.getElementById('input-api-key').value.trim();
+    const sec   = document.getElementById('input-api-secret').value.trim();
+    const pass  = document.getElementById('input-passphrase').value.trim();
+    const el    = document.getElementById('risultato-api');
+    if (!key || !sec || !pass) {
+      el.innerHTML = '<div class="alert alert-error">❌ Compila tutti i campi</div>';
+      return;
+    }
+    localStorage.setItem('bg_api_key',    key);
+    localStorage.setItem('bg_api_secret', sec);
+    localStorage.setItem('bg_passphrase', pass);
+    el.innerHTML = '<div class="alert alert-success">✓ Credenziali salvate nel browser. Riavvia il server con le nuove chiavi nel file .env</div>';
+    notifica('✅ Credenziali salvate', 'success');
+  });
+
+  // ── SALVATAGGIO PARAMETRI ────────────────────────────
+  document.getElementById('btn-salva-parametri').addEventListener('click', () => {
+    const params = {
+      rischio:     document.getElementById('input-rischio').value,
+      perditaMax:  document.getElementById('input-perdita-max').value,
+      leva:        document.getElementById('input-leva').value
+    };
+    localStorage.setItem('scalper_params', JSON.stringify(params));
+    document.getElementById('risultato-parametri').innerHTML =
+      '<div class="alert alert-success">✓ Parametri salvati</div>';
+    notifica('✅ Parametri salvati', 'success');
+  });
+
+  // ── INIZIALIZZAZIONE ──────────────────────────────────
+  function caricaImpostazioni() {
+    const sym = localStorage.getItem('simbolo') || 'XRPUSDT';
+    document.getElementById('input-simbolo').value = sym;
+    document.getElementById('asset-display').textContent = sym.replace('USDT', '/USDT');
+    document.getElementById('info-coppia').textContent = sym.replace('USDT', '/USDT');
+    document.getElementById('input-api-key').value    = localStorage.getItem('bg_api_key') || '';
+    document.getElementById('input-api-secret').value = localStorage.getItem('bg_api_secret') || '';
+    document.getElementById('input-passphrase').value = localStorage.getItem('bg_passphrase') || '';
+    const p = JSON.parse(localStorage.getItem('scalper_params') || '{}');
+    if (p.rischio)    document.getElementById('input-rischio').value    = p.rischio;
+    if (p.perditaMax) document.getElementById('input-perdita-max').value= p.perditaMax;
+    if (p.leva)       document.getElementById('input-leva').value       = p.leva;
+  }
+
+  // ── ASTROLOGIA AVANZATA (AETHER-V12 ENGINE) ──────────────────────
+  const ZSIGNS=[
+    {sym:'♈',name:'Ariete',lon:0},{sym:'♉',name:'Toro',lon:30},
+    {sym:'♊',name:'Gemelli',lon:60},{sym:'♋',name:'Cancro',lon:90},
+    {sym:'♌',name:'Leone',lon:120},{sym:'♍',name:'Vergine',lon:150},
+    {sym:'♎',name:'Bilancia',lon:180},{sym:'♏',name:'Scorpione',lon:210},
+    {sym:'♐',name:'Sagittario',lon:240},{sym:'♑',name:'Capricorno',lon:270},
+    {sym:'♒',name:'Acquario',lon:300},{sym:'♓',name:'Pesci',lon:330}
+  ];
+
+  function calcMoon(date){
+    const JD=(date.getTime()/86400000)+2440587.5;
+    const T=(JD-2451545.0)/36525;
+    const L0=218.3164477+481267.88123421*T;
+    const M=134.9633964+477198.8675055*T;
+    const Ms=357.5291092+35999.0502909*T;
+    const F=93.2720950+483202.0175233*T;
+    const D=297.8501921+445267.1114034*T;
+    const r=Math.PI/180;
+    const dL=6.288774*Math.sin(r*M)+1.274027*Math.sin(r*(2*D-M))+0.658314*Math.sin(r*(2*D))+0.213618*Math.sin(r*(2*M))-0.185116*Math.sin(r*Ms)-0.114332*Math.sin(r*(2*F))+0.058793*Math.sin(r*(2*D-2*M))+0.057066*Math.sin(r*(2*D-Ms-M))+0.053322*Math.sin(r*(2*D+M))+0.045758*Math.sin(r*(2*D-Ms))-0.040923*Math.sin(r*(Ms-M))-0.034720*Math.sin(r*D)-0.030383*Math.sin(r*(Ms+M))+0.015327*Math.sin(r*(2*D-2*F))-0.012528*Math.sin(r*(M+2*F))+0.010980*Math.sin(r*(M-2*F));
+    const lon=((L0+dL)%360+360)%360;
+    const sLon=((Ms+282.9404+4.70935e-5*T)%360+360)%360;
+    const pa=((lon-sLon)%360+360)%360;
+    const ill=(1-Math.cos(r*pa))/2;
+    const pct=Math.round(ill*100);
+    let pn;
+    if(pa<22.5)pn='Luna Nuova';else if(pa<67.5)pn='Crescente';else if(pa<112.5)pn='Primo Quarto';else if(pa<157.5)pn='Gibbosa Crescente';else if(pa<202.5)pn='Luna Piena';else if(pa<247.5)pn='Gibbosa Calante';else if(pa<292.5)pn='Terzo Quarto';else if(pa<337.5)pn='Calante';else pn='Luna Nuova';
+    const si=Math.floor(lon/30)%12;
+    return{lon,ill,pct,pa,pn,sign:ZSIGNS[si].name,deg:lon%30,si,moonAge:pa/360*29.53};
+  }
+
+  function buildWheel(){
+    const r2=Math.PI/180,cx=200,cy=200,ro=178,ri=148,rs=163;
+    const dg=document.getElementById('zodiac-dividers');
+    if(dg){dg.innerHTML='';for(let i=0;i<12;i++){const a=(i*30-90)*r2;const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('x1',(cx+ri*Math.cos(a)).toFixed(2));ln.setAttribute('y1',(cy+ri*Math.sin(a)).toFixed(2));ln.setAttribute('x2',(cx+ro*Math.cos(a)).toFixed(2));ln.setAttribute('y2',(cy+ro*Math.sin(a)).toFixed(2));dg.appendChild(ln);}}
+    const sg=document.getElementById('zodiac-symbols');
+    if(sg){sg.innerHTML='';ZSIGNS.forEach((z,i)=>{const a=((i*30+15)-90)*r2;const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(cx+rs*Math.cos(a)).toFixed(2));t.setAttribute('y',(cy+rs*Math.sin(a)).toFixed(2));t.textContent=z.sym;sg.appendChild(t);});}
+    const rg=document.getElementById('sun-rays');
+    if(rg){rg.innerHTML='';for(let i=0;i<12;i++){const a=(i*30)*r2;const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('x1',(200+18*Math.cos(a)).toFixed(2));ln.setAttribute('y1',(200+18*Math.sin(a)).toFixed(2));ln.setAttribute('x2',(200+30*Math.cos(a)).toFixed(2));ln.setAttribute('y2',(200+30*Math.sin(a)).toFixed(2));rg.appendChild(ln);}}
+  }
+
+  function updateMoon(){
+    const m=calcMoon(new Date());
+    const sa=m.lon-90;
+    const og=document.getElementById('moon-orbit-group');if(og)og.setAttribute('transform',`rotate(${sa.toFixed(3)},200,200)`);
+    const mb=document.getElementById('moon-body');if(mb)mb.setAttribute('transform',`translate(200,52) rotate(${(-sa).toFixed(3)},0,0)`);
+    const cr=document.getElementById('moonClipRect');const le=document.getElementById('moon-lit-ellipse');const rv=11;
+    if(cr&&le){
+      const wx=m.pa<=180;const tx=rv*Math.abs(Math.cos(m.pa*Math.PI/180));
+      le.setAttribute('rx',tx.toFixed(3));le.setAttribute('ry',rv.toFixed(1));
+      if(wx){cr.setAttribute('x','0');cr.setAttribute('y',(-rv-1).toString());cr.setAttribute('width',(rv+2).toString());cr.setAttribute('height',((rv+1)*2).toString());}
+      else{cr.setAttribute('x',(-rv-2).toString());cr.setAttribute('y',(-rv-1).toString());cr.setAttribute('width',(rv+2).toString());cr.setAttribute('height',((rv+1)*2).toString());}
+      if(m.pa>170&&m.pa<190){le.setAttribute('rx',rv.toFixed(1));cr.setAttribute('x',(-rv-2).toString());cr.setAttribute('width',((rv+2)*2).toString());}
+      if(m.pa<10||m.pa>350)le.setAttribute('rx','0');
+    }
+    document.querySelectorAll('#zodiac-symbols text').forEach((el,i)=>{
+      if(i===m.si){el.setAttribute('fill','#ccff00');el.setAttribute('opacity','1');el.setAttribute('font-size','16');}
+      else{el.setAttribute('fill','#88aa00');el.setAttribute('opacity','.8');el.setAttribute('font-size','14');}
+    });
+
+    const ws=document.getElementById('wheel-moon-sign');const wp=document.getElementById('wheel-moon-phase-detail');
+    if(ws)ws.textContent=`☽ Luna in ${m.sign} ${m.deg.toFixed(1)}° · ${m.pn}`;
+    if(wp)wp.textContent=`${m.pct}% illuminata`;
+    const EP={'Luna Nuova':'🌑','Crescente':'🌒','Primo Quarto':'🌓','Gibbosa Crescente':'🌔','Luna Piena':'🌕','Gibbosa Calante':'🌖','Terzo Quarto':'🌗','Calante':'🌘'};
+    
+    const ee=document.getElementById('moon-emoji'),ne=document.getElementById('moon-name'),ie=document.getElementById('moon-impact');
+    if(ee)ee.textContent=EP[m.pn]||'🌔';
+    if(ne)ne.textContent=m.pn.toUpperCase();
+    if(ie)ie.textContent=`[${m.sign.toUpperCase()}] ${m.deg.toFixed(1)}° · ${m.pct}% illuminata`;
+    return m;
+  }
+
+  // Sun slow rotation
+  (()=>{let a=0;const rg=document.getElementById('sun-rays');function s(){a+=.04;if(rg)rg.setAttribute('transform',`rotate(${a},200,200)`);requestAnimationFrame(s);}requestAnimationFrame(s);})();
+
+  function getMoonPhase(){
+    const m=calcMoon(new Date());
+    const mp={'Luna Nuova':'Neutro — nuovo ciclo','Crescente':'Moderatamente rialzista','Primo Quarto':'Possibile inversione','Gibbosa Crescente':'Bullish — momentum','Luna Piena':'Picco emotivo — volatilità','Gibbosa Calante':'Distribuzione — prudenza','Terzo Quarto':'Correzione possibile','Calante':'Accumulazione silenziosa'};
+    return{name:m.pn,market:mp[m.pn]||'Neutro',phase:m.pa,moonAge:m.moonAge,signIdx:m.si,signName:m.sign};
+  }
+
+  function getAspects(){
+    return[
+      {pl:'♃ △ ☉',name:'Giove Trigono Sole',fx:'Espansione finanziaria — long favoriti',dt:'Oggi · Influsso forte',badge:'bull'},
+      {pl:'♂ □ ♄',name:'Marte Quadratura Saturno',fx:'Pressione ribassista — sizing ridotto',dt:'Domani · Attenzione',badge:'bear'},
+      {pl:'☿ ☌ ♅',name:'Mercurio Congiunto Urano',fx:'Notizie improvvise — alta volatilità',dt:'In arrivo',badge:'neut'}
+    ];
+  }
+
+  function calcAstroScore(moon,asp){
+    let s=0;
+    if(moon.name.includes('Crescente')||moon.name.includes('Piena'))s+=2;
+    if(moon.name.includes('Calante')||moon.name.includes('Quarto'))s-=1;
+    asp.forEach(a=>{if(a.badge==='bull')s+=1.5;if(a.badge==='bear')s-=1.5;});
+    return s*0.4;
+  }
+
+  function renderAstro(){
+    const moon=getMoonPhase();const asp=getAspects();
+    const astroData={moon,asp,score:calcAstroScore(moon,asp)};
+    
+    document.getElementById('aspects-list').innerHTML=asp.map(a=>`
+      <div class="asp-card">
+        <div class="asp-pl">${a.pl}</div>
+        <div style="flex:1"><div class="asp-name">${a.name.toUpperCase()}</div><div class="asp-fx">${a.fx}</div><div class="asp-dt">${a.dt}</div></div>
+        <div class="asp-badge ${a.badge}">${a.badge.toUpperCase()}</div>
+      </div>`).join('');
+      
+    const sc=astroData.score;
+    let txt;
+    if(sc>1)txt=`${moon.name} in un cielo favorevole. ${asp[0].name} apre una finestra rara. Chi accumula adesso, con disciplina, trova il vento dalla propria parte.`;
+    else if(sc>-1)txt=`Il cielo è bilanciato. ${moon.name} porta neutralità. I segnali tecnici peseranno di più in questa fase.`;
+    else txt=`${asp.find(a=>a.badge==='bear')?.name||'Aspetti difficili'} portano tensione. Non è il momento dei rischi grandi.`;
+    document.getElementById('oracle-txt').textContent=txt;
+    
+    // Aggiorna vecchia UI se c'è
+    const oldSent = document.getElementById('astro-sentiment');
+    if (oldSent) { oldSent.textContent = sc>1?'BULLISH':sc<-1?'BEARISH':'NEUTRAL'; oldSent.style.color = sc>1?'var(--green)':sc<-1?'var(--red)':'var(--lime)'; }
+    const oldScore = document.getElementById('astro-score');
+    if (oldScore) { oldScore.textContent = (sc*10+50).toFixed(1)+'%'; }
+    const oldProg = document.getElementById('astro-progress');
+    if (oldProg) { oldProg.style.width = Math.min(100,Math.max(0,sc*10+50))+'%'; }
+  }
+
+  function renderAstroStrategies() {
+    const grid = document.getElementById('astro-strat-grid');
+    if (!grid) return;
+
+    const m = getMoonPhase();
+    const moonAge = m.moonAge;
+    const signIdx = m.signIdx;
+    const signName = m.signName;
+    
+    // Determine phase
+    let phase, phaseIcon;
+    if (moonAge < 3.7) { phase = 'LUNA_NUOVA'; phaseIcon = '🌑'; }
+    else if (moonAge < 7.4) { phase = 'CRESCENTE'; phaseIcon = '🌒'; }
+    else if (moonAge < 11.1) { phase = 'PRIMO_QUARTO'; phaseIcon = '🌓'; }
+    else if (moonAge < 14.8) { phase = 'GIBBOSA_CRESC'; phaseIcon = '🌔'; }
+    else if (moonAge < 18.5) { phase = 'LUNA_PIENA'; phaseIcon = '🌕'; }
+    else if (moonAge < 22.2) { phase = 'GIBBOSA_CAL'; phaseIcon = '🌖'; }
+    else if (moonAge < 25.9) { phase = 'TERZO_QUARTO'; phaseIcon = '🌗'; }
+    else { phase = 'CALANTE'; phaseIcon = '🌘'; }
+
+    // Element of current sign
+    const fireSign = [0,4,8].includes(signIdx);   // Aries, Leo, Sagittarius
+    const earthSign = [1,5,9].includes(signIdx);  // Taurus, Virgo, Capricorn
+    const airSign = [2,6,10].includes(signIdx);   // Gemini, Libra, Aquarius
+    const waterSign = [3,7,11].includes(signIdx); // Cancer, Scorpio, Pisces
+
+    const strategies = [];
+
+    // 1. Phase-based strategy
+    if (moonAge < 3.7 || moonAge > 26) {
+      strategies.push({ name: '🌑 LUNA_NUOVA · ACCUMULA', cls: 'bullish', desc: 'Fase di rinnovamento. Accumulazione graduale XRP. Stop loss stretto −1.2%. Target: +3.5% entro primo quarto.', badge: '▲ LONG', active: true });
+    } else if (moonAge > 13 && moonAge < 16) {
+      strategies.push({ name: '🌕 LUNA_PIENA · CAUTELA', cls: 'bearish', desc: 'Massima volatilità lunare. Ridurre size del 50%. Posizioni short su rimbalzi. Stop loss −0.8%.', badge: '▼ SHORT', active: true });
+    } else if (moonAge > 7 && moonAge < 11) {
+      strategies.push({ name: '🌓 PRIMO_QUARTO · TREND', cls: 'bullish', desc: 'Momentum crescente. Entrare su pullback. Conf. minima 70%. Size standard. TP: +2.5%.', badge: '▲ TREND', active: true });
+    } else if (moonAge > 22 && moonAge < 26) {
+      strategies.push({ name: '🌗 TERZO_QUARTO · RANGE', cls: 'neutral', desc: 'Energia lunare in calo. Mercato laterale probabile. Trading di range. Size ridotta del 30%.', badge: '◉ RANGE', active: true });
+    } else {
+      strategies.push({ name: phaseIcon + ' ' + phase + ' · MONITOR', cls: 'neutral', desc: 'Fase di transizione. Attesa conferme tecniche. Conf. minima 75%. No trading impulsivo.', badge: '◎ WAIT', active: false });
+    }
+
+    // 2. Sign-based strategy
+    if (fireSign) {
+      strategies.push({ name: signName + ' 🔥 FUOCO · MOMENTUM', cls: 'bullish', desc: 'Luna in segno di fuoco: energia espansiva. Breakout su volumi alti. Crypto target: +4% in 24h.', badge: '▲ MOMENTUM', active: moonAge < 20 });
+    } else if (earthSign) {
+      strategies.push({ name: signName + ' 🌍 TERRA · DCA', cls: 'neutral', desc: 'Luna in segno di terra: consolidamento. Strategia DCA. Ingressi scaglionati.', badge: '◉ DCA', active: true });
+    } else if (airSign) {
+      strategies.push({ name: signName + ' 💨 ARIA · SCALPING', cls: 'neutral', desc: 'Luna in segno d\'aria: volatilità media. Scalping su timeframe 15m. Target rapidi +0.8%/+1.2%.', badge: '◈ SCALP', active: true });
+    } else if (waterSign) {
+      strategies.push({ name: signName + ' 💧 ACQUA · DIFENSIVO', cls: 'bearish', desc: 'Luna in segno d\'acqua: emozioni amplificate. Strategia difensiva. Posizioni ridotte.', badge: '▼ DIFESA', active: false });
+    }
+
+    grid.innerHTML = strategies.map(s => `
+      <div class="astrat ${s.cls}" style="${s.active ? '' : 'opacity:.5;'}">
+        <div class="astrat-name">${s.name}</div>
+        <div class="astrat-desc">${s.desc}</div>
+        <span class="astrat-badge">${s.badge}${s.active ? ' ● ATTIVA' : ' ○ INATTIVA'}</span>
+      </div>`).join('');
+  }
+
+  function renderNews(){
+    const NP=[
+      {src:'R',title:'SEC rinvia ancora la decisione sull\'ETF XRP di BlackRock',tag:'bear',impact:-1.5},
+      {src:'B',title:'Binance settlement completato — ops normali',tag:'bull',impact:1},
+      {src:'𝕏',title:'Whale: 280M XRP da wallet dormiente',tag:'bear',impact:-1},
+      {src:'R',title:'Fed: possibili tagli tassi',tag:'bull',impact:2},
+      {src:'C',title:'BlackRock BTC ETF: settimana record',tag:'bull',impact:2},
+    ];
+    document.getElementById('news-feed').innerHTML=NP.map(n=>`
+      <div class="news-item">
+        <div class="news-src">${n.src}</div>
+        <div><div class="news-title">${n.title}</div>
+        <span class="news-tag ${n.tag}">${n.tag==='bull'?'BULLISH':n.tag==='bear'?'BEARISH':'NEUTRO'}</span></div>
+      </div>`).join('');
+  }
+
+  // ── MARKET & TECHNICAL ANALYSIS (AETHER ENGINE) ──
+  let fngValue=50; let aetherPrices={BTC:0,XRP:0};
+  
+  function calcRSI(closes, period=14) {
+    if (closes.length < period+1) return 50;
+    let gains=0, losses=0;
+    for (let i=closes.length-period; i<closes.length; i++) {
+      const d = closes[i] - closes[i-1];
+      if (d>0) gains+=d; else losses+=Math.abs(d);
+    }
+    if (losses===0) return 100;
+    const rs = (gains/period) / (losses/period);
+    return Math.round(100 - 100/(1+rs));
+  }
+  function calcEMA(closes, period) {
+    if (closes.length < period) return closes[closes.length-1];
+    const k = 2/(period+1);
+    let ema = closes.slice(0, period).reduce((a,b)=>a+b,0)/period;
+    for (let i=period; i<closes.length; i++) ema = closes[i]*k + ema*(1-k);
+    return ema;
+  }
+  function calcMACD(closes) {
+    if (closes.length < 26) return { macd: 0, signal: 0, hist: 0 };
+    const ema12 = calcEMA(closes, 12), ema26 = calcEMA(closes, 26);
+    const macdLine = ema12 - ema26;
+    return { hist: macdLine }; // Simplified since we only check hist > 0
+  }
+  function calcVolume(candles) {
+    if (!candles || candles.length < 20) return false;
+    const recent = candles.slice(-5).reduce((a,c)=>a+c.v, 0)/5;
+    const avg = candles.slice(-20).reduce((a,c)=>a+c.v, 0)/20;
+    return recent > avg * 1.2;
+  }
+  async function fetchFearGreed() {
+    try {
+      const r = await fetch('https://api.alternative.me/fng/?limit=1&format=json');
+      const d = await r.json();
+      if (d.data?.[0]) fngValue = parseInt(d.data[0].value);
+    } catch(e) {}
+  }
+  async function fetchKlines(symbol, interval='1h', limit=200) {
+    try {
+      const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+      const d = await r.json();
+      return d.map(x=>({c:parseFloat(x[4]),v:parseFloat(x[5])}));
+    } catch(e) { return null; }
+  }
+  async function fetchAetherPrices(){
+    const syms = [{s:'BTC',bn:'BTCUSDT'},{s:'XRP',bn:'XRPUSDT'}];
+    for (const {s,bn} of syms) {
+      try {
+        const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${bn}`);
+        const d = await r.json();
+        aetherPrices[s] = parseFloat(d.lastPrice);
+        updateAetherPriceUI(s, aetherPrices[s], parseFloat(d.priceChangePercent));
+      } catch(e) {}
+    }
+  }
+  function updateAetherPriceUI(s,p,chg){
+    const f=s==='XRP'?p.toFixed(4):p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const el2=document.getElementById('m-price-'+s);
+    if(el2)el2.textContent='$'+f;
+    const cf=(chg>=0?'+':'')+chg.toFixed(2)+'%',cl=chg>=0?'pos':'neg';
+    const e=document.getElementById('m-chg-'+s);if(e){e.textContent=cf;e.className='mkt-chg '+cl;}
+  }
+  async function calcTech(s){
+    const symbol = s==='BTC'?'BTCUSDT':'XRPUSDT';
+    const candles = await fetchKlines(symbol, '1h', 220);
+    let rsi=50, mb=false, ea=false, vh=false, fg=fngValue;
+    if (candles && candles.length >= 50) {
+      const closes = candles.map(c=>c.c);
+      rsi = calcRSI(closes, 14);
+      const macdData = calcMACD(closes);
+      mb = macdData.hist > 0;
+      const ema200 = calcEMA(closes, Math.min(200, closes.length));
+      ea = closes[closes.length-1] > ema200;
+      vh = calcVolume(candles);
+    }
+    const set=(id,v,c)=>{const e=document.getElementById(id);if(e){e.textContent=v;e.className='mind-v '+c;}};
+    set('m-rsi-'+s, rsi, rsi>60?'bull':rsi<40?'bear':'');
+    set('m-macd-'+s, mb?'BULL':'BEAR', mb?'bull':'bear');
+    set('m-ema-'+s, ea?'↑ABOVE':'↓BELOW', ea?'bull':'bear');
+    set('m-vol-'+s, vh?'HIGH':'MED', vh?'bull':'');
+    set('m-fg-'+s, fg, fg>60?'bull':fg<35?'bear':'');
+    
+    // Genera un signal basilare ma colorato
+    let sigR=0; if(rsi<40)sigR++; if(rsi>60)sigR--; if(mb)sigR++; else sigR--; if(ea)sigR++; else sigR--; if(fg<40)sigR++; if(fg>70)sigR--;
+    let signalText = sigR>=2?'STRONG BUY':sigR==1?'BUY':sigR==-1?'SELL':sigR<=-2?'STRONG SELL':'NEUTRAL';
+    let signalColor = sigR>0?'bull':sigR<0?'bear':'';
+    set('m-sig-'+s, signalText, signalColor);
+  }
+  async function initAetherTech() {
+    await fetchFearGreed();
+    await fetchAetherPrices();
+    await calcTech('BTC');
+    await calcTech('XRP');
+  }
+
+  function initWheelAstro() {
+    buildWheel();
+    updateMoon();
+    setInterval(updateMoon, 120000);
+    renderAstro();
+    renderAstroStrategies();
+    renderNews();
+    initAetherTech();
+    setInterval(initAetherTech, 60000);
+  }
+
+
+  async function init() {
+    caricaImpostazioni();
+    await verificaConnessione();
+    // Fetch iniziali
+    await Promise.all([aggiornaPrezzi(), aggiornaAnalisi(), aggiornaSaldo(), aggiornaStorico()]);
+    // Poll ogni 3 secondi per prezzi, ogni 8 per analisi, ogni 10 per saldo/storico
+    setInterval(aggiornaPrezzi,   3000);
+    setInterval(aggiornaAnalisi,  8000);
+    setInterval(aggiornaSaldo,   15000);
+    setInterval(aggiornaStorico, 10000);
+    // Astro ogni 5 minuti (dati lenti)
+    setInterval(fetchAstro, 5 * 60 * 1000);
+  }
+
+
+  init();
+  </script>
+</body>
+</html>
