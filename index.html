@@ -1149,8 +1149,8 @@
   });
 
   // ── SALVATAGGIO CREDENZIALI ──────────────────────────
-  document.getElementById('btn-salva-api').addEventListener('click', () => {
-        const apiUrl = document.getElementById('input-api-url').value.trim();
+  document.getElementById('btn-salva-api').addEventListener('click', async () => {
+    const apiUrl = document.getElementById('input-api-url').value.trim();
     if (apiUrl) {
       localStorage.setItem('bg_api_url', apiUrl);
       API = `${apiUrl}/api`;
@@ -1159,16 +1159,44 @@
     const key   = document.getElementById('input-api-key').value.trim();
     const sec   = document.getElementById('input-api-secret').value.trim();
     const pass  = document.getElementById('input-passphrase').value.trim();
+    const symbolLocal = localStorage.getItem('simbolo') || 'XRP/USDT';
     const el    = document.getElementById('risultato-api');
+    
     if (!key || !sec || !pass) {
       el.innerHTML = '<div class="alert alert-error">❌ Compila tutti i campi</div>';
       return;
     }
+    
     localStorage.setItem('bg_api_key',    key);
     localStorage.setItem('bg_api_secret', sec);
     localStorage.setItem('bg_passphrase', pass);
-    el.innerHTML = '<div class="alert alert-success">✓ Credenziali salvate nel browser. Riavvia il server con le nuove chiavi nel file .env</div>';
-    notifica('✅ Credenziali salvate', 'success');
+    
+    el.innerHTML = '<div class="alert alert-warning">⏳ Connessione al server in corso...</div>';
+    
+    // Invia credenziali al backend per questa sessione
+    try {
+      const response = await apiFetch('/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: key,
+          api_secret: sec,
+          passphrase: pass,
+          symbol: symbolLocal
+        })
+      });
+      
+      const data = await response.json();
+      if (data.status === 'ok') {
+        el.innerHTML = '<div class="alert alert-success">✓ Connesso e Autenticato! Ritorna alla Dashboard.</div>';
+        notifica('✅ Connessione Stabilita', 'success');
+        verificaConnessione();
+      } else {
+        el.innerHTML = `<div class="alert alert-error">❌ Server Error: ${data.error || 'Autenticazione Fallita'}</div>`;
+      }
+    } catch(e) {
+      el.innerHTML = '<div class="alert alert-error">❌ Errore di rete. Verifica se il Server/Ngrok è avviato.</div>';
+    }
   });
 
   // ── SALVATAGGIO PARAMETRI ────────────────────────────
