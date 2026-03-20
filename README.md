@@ -1,4 +1,4 @@
-# XRP Scalper Bot - Advanced Edition
+# Antigravity Scalper Bot
 
 Bot di trading automatico per XRP su Binance Futures con **strategia avanzata** per scalping su timeframe 1 minuto con **16+ indicatori tecnici**.
 
