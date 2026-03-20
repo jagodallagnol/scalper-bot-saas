@@ -1,51 +1,101 @@
 """
-SCALPER BOT · BACKEND API SERVER
-Flask server for real-time Binance API integration
+SCALPER BOT · BACKEND API SERVER (MULTI-USER SAAS)
+Flask server for real-time Binance/Bitget API integration, supporting multiple concurrent users.
 """
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
+import uuid
 from dotenv import load_dotenv
 from advanced_scalper_strategy import AdvancedScalperStrategy
 from data_manager import DataManager
 import ccxt
 import threading
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+# Enable CORS for all origins so Netlify can connect to this backend
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Global variables
-exchange = None
-strategy = None
-data_manager = DataManager()
-bot_running = False
-bot_thread = None
-portfolio_data = {
-    'totalBalance': 1000,
-    'availableBalance': 1000,
-    'positionBalance': 0,
-    'trades': [],
-    'positions': []
-}
+# Global shared instances (Stateless)
+global_strategy = None
+global_data_manager = DataManager()
 
-def init_exchange(api_key=None, api_secret=None, password=None):
-    """Initialize Bitget exchange connection"""
-    global exchange
+# Session memory store
+# Format: { 'session_id': { 'exchange': ccxt_instance, 'bot_running': bool, 'bot_thread': Thread, 'portfolio_data': dict, 'last_active': datetime } }
+sessions = {}
+
+def init_global_strategy():
+    """Initialize advanced strategy once for all users"""
+    global global_strategy
+    try:
+        if not global_strategy:
+            global_strategy = AdvancedScalperStrategy()
+        return True
+    except Exception as e:
+        print(f"Errore nell'inizializzazione strategia: {e}")
+        return False
+
+def cleanup_inactive_sessions():
+    """Background thread to remove inactive sessions and stop their bots to free memory"""
+    while True:
+        try:
+            now = datetime.now()
+            to_remove = []
+            for session_id, session in sessions.items():
+                # If inactive for > 1 hour
+                if now - session['last_active'] > timedelta(hours=1):
+                    to_remove.append(session_id)
+            
+            for session_id in to_remove:
+                print(f"[CLEANUP] Removing inactive session: {session_id}")
+                session = sessions[session_id]
+                session['bot_running'] = False # Stop thread
+                del sessions[session_id]
+                
+        except Exception as e:
+            print(f"Cleanup error: {e}")
+        time.sleep(600) # Check every 10 minutes
+
+threading.Thread(target=cleanup_inactive_sessions, daemon=True).start()
+
+def get_session():
+    """Retrieves or creates a user session based on the X-Session-ID header"""
+    session_id = request.headers.get('X-Session-ID')
     
-    api_key = api_key or os.getenv('BITGET_API_KEY')
-    api_secret = api_secret or os.getenv('BITGET_SECRET_KEY')
-    password = password or os.getenv('BITGET_PASSWORD')
+    if not session_id:
+        return None, jsonify({'error': 'Missing X-Session-ID header. Required for multi-user support.'}), 401
+        
+    if session_id not in sessions:
+        sessions[session_id] = {
+            'exchange': None,
+            'bot_running': False,
+            'bot_thread': None,
+            'portfolio_data': {
+                'totalBalance': 0,
+                'availableBalance': 0,
+                'positionBalance': 0,
+                'trades': [],
+                'positions': []
+            },
+            'last_active': datetime.now()
+        }
     
+    sessions[session_id]['last_active'] = datetime.now()
+    return sessions[session_id], None, None
+
+def init_exchange(session, api_key, api_secret, password):
+    """Initialize Bitget exchange connection for a specific session"""
     if not api_key or not api_secret or not password:
         return False
     
     try:
-        exchange = ccxt.bitget({
+        session['exchange'] = ccxt.bitget({
             'apiKey': api_key,
             'secret': api_secret,
             'password': password,
@@ -56,17 +106,7 @@ def init_exchange(api_key=None, api_secret=None, password=None):
         })
         return True
     except Exception as e:
-        print(f"Errore nell'inizializzazione exchange: {e}")
-        return False
-
-def init_strategy():
-    """Initialize advanced strategy"""
-    global strategy
-    try:
-        strategy = AdvancedScalperStrategy()
-        return True
-    except Exception as e:
-        print(f"Errore nell'inizializzazione strategia: {e}")
+        print(f"Errore nell'inizializzazione exchange per utente: {e}")
         return False
 
 # ═══════════════════════════════════
@@ -75,30 +115,34 @@ def init_strategy():
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
-    """Check API server status"""
+    """Check API server status and user's bot status"""
+    session, err_resp, code = get_session()
+    if err_resp: return err_resp, code
+    
     return jsonify({
         'status': 'ok',
         'timestamp': datetime.now().isoformat(),
-        'exchange_connected': exchange is not None,
-        'bot_running': bot_running
+        'exchange_connected': session['exchange'] is not None,
+        'bot_running': session['bot_running']
     })
 
 @app.route('/api/price', methods=['GET'])
 def get_price():
-    """Get current price and market data"""
+    """Get current price. Public endpoint, doesn't require API key."""
     try:
+        session, err_resp, code = get_session()
+        if err_resp: return err_resp, code
+        
         symbol = os.getenv('TRADING_PAIR', 'XRP/USDT')
         
-        if not exchange:
-            init_exchange()
-            if not exchange:
-                return jsonify({'error': 'Exchange not connected'}), 503
+        # Use user exchange if available, otherwise just use a generic unauthenticated one
+        ex = session['exchange'] if session['exchange'] else ccxt.bitget()
         
         # Fetch ticker
-        ticker = exchange.fetch_ticker(symbol)
+        ticker = ex.fetch_ticker(symbol)
         
         # Fetch 24h stats
-        ohlcv = exchange.fetch_ohlcv(symbol, '1m', limit=1440)
+        ohlcv = ex.fetch_ohlcv(symbol, '1m', limit=1440)
         
         high_24h = max([candle[2] for candle in ohlcv[-1440:]])
         low_24h = min([candle[3] for candle in ohlcv[-1440:]])
@@ -123,46 +167,46 @@ def get_price():
 
 @app.route('/api/portfolio', methods=['GET'])
 def get_portfolio():
-    """Get portfolio balance and trades info"""
+    """Get portfolio balance and trades info for the session"""
     try:
-        if not exchange:
-            init_exchange()
-            if not exchange:
-                return jsonify(portfolio_data)
+        session, err_resp, code = get_session()
+        if err_resp: return err_resp, code
+        
+        if not session['exchange']:
+            return jsonify(session['portfolio_data'])
         
         # Fetch balance
-        balance = exchange.fetch_balance()
+        balance = session['exchange'].fetch_balance()
         
         total = balance['total'].get('USDT', 0)
         free = balance['free'].get('USDT', 0)
         used = balance['used'].get('USDT', 0)
         
-        portfolio_data['totalBalance'] = total
-        portfolio_data['availableBalance'] = free
-        portfolio_data['positionBalance'] = used
+        session['portfolio_data']['totalBalance'] = total
+        session['portfolio_data']['availableBalance'] = free
+        session['portfolio_data']['positionBalance'] = used
         
-        return jsonify(portfolio_data)
+        return jsonify(session['portfolio_data'])
     except Exception as e:
         print(f"Errore nel fetching portafoglio: {e}")
-        return jsonify(portfolio_data)
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/indicators', methods=['GET'])
 def get_indicators():
     """Get current indicators values"""
     try:
-        if not strategy:
-            init_strategy()
+        init_global_strategy()
         
         symbol = os.getenv('TRADING_PAIR', 'XRP/USDT')
         
-        # Fetch historical data
-        df = data_manager.download_data(symbol, '1m', limit=500)
+        # Fetch historical data (using the global data manager)
+        df = global_data_manager.download_data(symbol, '1m', limit=500)
         
         if df.empty:
             return jsonify({'error': 'No data'}), 400
         
         # Calculate indicators
-        indicators = strategy.calculate_all_indicators(df)
+        indicators = global_strategy.calculate_all_indicators(df)
         
         return jsonify({
             'indicators': indicators,
@@ -176,19 +220,15 @@ def get_indicators():
 def get_signal():
     """Get current trading signal"""
     try:
-        if not strategy:
-            init_strategy()
-        
+        init_global_strategy()
         symbol = os.getenv('TRADING_PAIR', 'XRP/USDT')
-        
-        # Fetch historical data
-        df = data_manager.download_data(symbol, '1m', limit=500)
+        df = global_data_manager.download_data(symbol, '1m', limit=500)
         
         if df.empty:
             return jsonify({'error': 'No data'}), 400
         
         # Get signal
-        signal = strategy.generate_signals(df)
+        signal = global_strategy.generate_signals(df)
         
         return jsonify({
             'signal': signal,
@@ -198,59 +238,82 @@ def get_signal():
         print(f"Errore nel calcolo del segnale: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/symbol', methods=['POST'])
+def set_symbol():
+    """Update active trading symbol for the session"""
+    session, err_resp, code = get_session()
+    if err_resp: return err_resp, code
+    
+    data = request.json
+    symbol = data.get('symbol', 'XRPUSDT').upper()
+    
+    # We could store it in session if we want to run multiple pairs, 
+    # but for now we just return success so the frontend updates internally.
+    try:
+        # Just verify it's a valid symbol by fetching ticker
+        ex = session['exchange'] if session['exchange'] else ccxt.bitget()
+        ticker = ex.fetch_ticker(symbol.replace('USDT', '/USDT'))
+        return jsonify({'successo': True, 'prezzo': ticker['last']})
+    except Exception as e:
+        return jsonify({'successo': False, 'errore': 'Coppia non valida o non trovata.'})
+
 @app.route('/api/credentials', methods=['POST'])
 def set_credentials():
-    """Set Bitget API credentials"""
+    """Set Bitget API credentials for the current user's session"""
     try:
+        session, err_resp, code = get_session()
+        if err_resp: return err_resp, code
+        
         data = request.json
         api_key = data.get('apiKey')
         api_secret = data.get('apiSecret')
         password = data.get('password')
         
-        if init_exchange(api_key, api_secret, password):
-            return jsonify({'status': 'success', 'message': 'Credenziali salvate'})
+        # Clear existing bot if running on old keys
+        session['bot_running'] = False
+        
+        if init_exchange(session, api_key, api_secret, password):
+            return jsonify({'status': 'success', 'message': 'Credenziali sicure caricate in memoria temporanea sessione'})
         else:
-            return jsonify({'status': 'error', 'message': 'Credenziali non valide'}), 400
+            return jsonify({'status': 'error', 'message': 'Credenziali API non valide'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/trade/execute', methods=['POST'])
 def execute_trade():
-    """Execute a trade"""
+    """Execute a trade for the specific user"""
     try:
-        if not exchange:
-            return jsonify({'status': 'error', 'message': 'Exchange not connected'}), 503
+        session, err_resp, code = get_session()
+        if err_resp: return err_resp, code
+        
+        if not session['exchange']:
+            return jsonify({'status': 'error', 'message': 'API Key non connessa. Inserisci in Impostazioni.'}), 403
         
         data = request.json
-        trade_type = data.get('type', 'buy')  # 'buy' or 'sell'
+        trade_type = data.get('type', 'buy')
         amount = float(data.get('amount', 100))
         stop_loss = float(data.get('stopLoss', 2))
         take_profit = float(data.get('takeProfit', 3))
         
         symbol = os.getenv('TRADING_PAIR', 'XRP/USDT')
         
-        # Get current price
-        ticker = exchange.fetch_ticker(symbol)
+        ticker = session['exchange'].fetch_ticker(symbol)
         current_price = ticker['last']
-        
-        # Calculate quantity
         quantity = amount / current_price
         
         try:
             if trade_type == 'buy':
-                order = exchange.create_market_buy_order(symbol, quantity)
+                order = session['exchange'].create_market_buy_order(symbol, quantity)
             else:
-                order = exchange.create_market_sell_order(symbol, quantity)
+                order = session['exchange'].create_market_sell_order(symbol, quantity)
             
-            # Add to trades history
-            portfolio_data['trades'].append({
+            # Add to user's trades history
+            session['portfolio_data']['trades'].append({
                 'id': order['id'],
                 'symbol': symbol,
                 'type': trade_type,
                 'amount': amount,
                 'price': current_price,
-                'stopLoss': stop_loss,
-                'takeProfit': take_profit,
                 'timestamp': datetime.now().isoformat(),
                 'pnl': 0
             })
@@ -269,63 +332,56 @@ def execute_trade():
 
 @app.route('/api/bot/start', methods=['POST'])
 def start_bot():
-    """Start the trading bot"""
-    global bot_running, bot_thread
-    
+    """Start the trading bot for the user's session"""
     try:
-        if bot_running:
-            return jsonify({'status': 'already_running', 'message': 'Bot è già in esecuzione'})
+        session, err_resp, code = get_session()
+        if err_resp: return err_resp, code
         
-        if not exchange:
-            init_exchange()
-            if not exchange:
-                return jsonify({'status': 'error', 'message': 'Impossibile connettere Bitget'}), 503
+        if session['bot_running']:
+            return jsonify({'status': 'already_running', 'message': 'Bot già in esecuzione'})
         
-        if not strategy:
-            init_strategy()
+        if not session['exchange']:
+            return jsonify({'status': 'error', 'message': 'Manca API Key. Vai nelle impostazioni.'}), 403
         
-        bot_running = True
-        bot_thread = threading.Thread(target=run_bot_loop, daemon=True)
-        bot_thread.start()
+        init_global_strategy()
         
-        return jsonify({'status': 'started', 'message': 'Bot avviato'})
+        session['bot_running'] = True
+        session['bot_thread'] = threading.Thread(target=run_bot_loop, args=(session,), daemon=True)
+        session['bot_thread'].start()
+        
+        return jsonify({'status': 'started', 'message': 'Bot Automatico Avviato'})
     except Exception as e:
-        bot_running = False
+        if session: session['bot_running'] = False
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/bot/stop', methods=['POST'])
 def stop_bot():
-    """Stop the trading bot"""
-    global bot_running
+    """Stop the trading bot for the user's session"""
+    session, err_resp, code = get_session()
+    if err_resp: return err_resp, code
     
-    bot_running = False
-    return jsonify({'status': 'stopped', 'message': 'Bot fermato'})
+    session['bot_running'] = False
+    return jsonify({'status': 'stopped', 'message': 'Bot Fermato'})
 
-def run_bot_loop():
-    """Main bot trading loop"""
-    import time
-    
+def run_bot_loop(session):
+    """Main bot trading loop mapped to exactly one session"""
     check_interval = int(os.getenv('CHECK_INTERVAL', 5))
     min_amount = float(os.getenv('MIN_AMOUNT', 100))
-    target_gain = float(os.getenv('TARGET_GAIN', 2))
     
-    while bot_running:
+    while session.get('bot_running', False):
         try:
             symbol = os.getenv('TRADING_PAIR', 'XRP/USDT')
             
-            # Fetch data
-            df = data_manager.download_data(symbol, '1m', limit=500)
+            df = global_data_manager.download_data(symbol, '1m', limit=500)
             
             if df.empty:
                 time.sleep(check_interval)
                 continue
             
-            # Get signal
-            signal = strategy.generate_signals(df)
+            signal = global_strategy.generate_signals(df)
             
-            # Execute trade on signal
             if signal['signal'] in ['LONG', 'SHORT']:
-                ticker = exchange.fetch_ticker(symbol)
+                ticker = session['exchange'].fetch_ticker(symbol)
                 current_price = ticker['last']
                 quantity = min_amount / current_price
                 
@@ -333,17 +389,17 @@ def run_bot_loop():
                 
                 try:
                     if trade_type == 'buy':
-                        order = exchange.create_market_buy_order(symbol, quantity)
+                        order = session['exchange'].create_market_buy_order(symbol, quantity)
                     else:
-                        order = exchange.create_market_sell_order(symbol, quantity)
+                        order = session['exchange'].create_market_sell_order(symbol, quantity)
                     
-                    print(f"[{datetime.now()}] Trade {trade_type} eseguito: {quantity} @ ${current_price}")
-                except:
-                    pass
+                    print(f"[SessionBot] Trade {trade_type} eseguito: {quantity} @ ${current_price}")
+                except Exception as ex:
+                    print(f"[SessionBot] Errore esecuzione ordine: {ex}")
             
             time.sleep(check_interval)
         except Exception as e:
-            print(f"Errore nel bot loop: {e}")
+            print(f"Errore nel bot loop di questa sessione: {e}")
             time.sleep(check_interval)
 
 # ═══════════════════════════════════
@@ -351,15 +407,14 @@ def run_bot_loop():
 # ═══════════════════════════════════
 
 if __name__ == '__main__':
-    # Initialize on startup
-    init_exchange()
-    init_strategy()
+    init_global_strategy()
     
     print("=" * 50)
-    print("SCALPER BOT · API SERVER")
+    print("SCALPER BOT · SAAS MULTI-USER API SERVER")
     print("=" * 50)
-    print(f"Exchange connected: {exchange is not None}")
-    print(f"Strategy initialized: {strategy is not None}")
+    print("Server pronto per ricevere connessioni Web!")
     print("=" * 50)
     
-    app.run(host='localhost', port=5000, debug=False)
+    # Listen on all interfaces (0.0.0.0) so Render/Platform can port map
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
