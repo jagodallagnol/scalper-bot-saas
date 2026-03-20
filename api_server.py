@@ -113,6 +113,19 @@ def init_exchange(session, api_key, api_secret, password):
 # API ENDPOINTS
 # ═══════════════════════════════════
 
+@app.route('/', methods=['GET'])
+def index():
+    return """
+    <html>
+        <body style="background-color: #050505; color: #00ff00; font-family: monospace; padding: 50px; text-align: center;">
+            <h1 style="color: #00ff00;">◬ ANTIGRAVITY SCALPER API</h1>
+            <p>Il Motore Python è ONLINE e operativo 24/7.</p>
+            <p>Status: <span style="color: #00ff00;">Running</span></p>
+            <p style="color: #888; font-size: 12px; margin-top: 50px;">Apri l'App Netlify dal tuo telefono per controllare il bot.</p>
+        </body>
+    </html>
+    """
+
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """Check API server status and user's bot status"""
